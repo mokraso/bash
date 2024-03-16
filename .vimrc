@@ -176,6 +176,13 @@ set backspace=indent,eol,start
 "Map jj to ESC" 
 inoremap jj <ESC>
 
+inoremap { {}<Esc>ha
+inoremap ( ()<Esc>ha
+inoremap [ []<Esc>ha
+inoremap " ""<Esc>ha
+inoremap ' ''<Esc>ha
+inoremap ` ``<Esc>ha
+
 " Use ctrl-[hjkl] to select the active split
 nnoremap <silent> <C-k> <c-w>k<CR>
 nnoremap <silent> <C-j> <c-w>j<CR>
