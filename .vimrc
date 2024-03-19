@@ -1,3 +1,6 @@
+" set cursorcolumn
+" set cursorline
+
 scriptencoding utf-8
 
 set splitbelow splitright 
