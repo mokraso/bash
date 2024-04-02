@@ -6,6 +6,8 @@ scriptencoding utf-8
 set splitbelow splitright 
 set ttimeoutlen=50
 " set clipboard^=unnamed,unnamedplus
+"
+set shortmess-=S " show number of match search result
 
 set wildignore+=*.o,*.obj,*.dylib,*.bin,*.dll,*.exe
 set wildignore+=*/.git/*,*/.svn/*,*/__pycache__/*,*/build/**
@@ -23,7 +25,7 @@ set expandtab       " expand tab to spaces so that tabs are spaces
 
 autocmd Filetype markdown,yml setlocal ts=2 sw=2 softtabstop=2 expandtab
 filetype plugin indent on
-
+"
 " Set matching pairs of characters and highlight matching brackets
 set matchpairs+=<:>,「:」,『:』,【:】,":",':',《:》
 
@@ -178,13 +180,6 @@ set backspace=indent,eol,start
 
 "Map jj to ESC" 
 inoremap jj <ESC>
-
-inoremap { {}<Esc>ha
-inoremap ( ()<Esc>ha
-inoremap [ []<Esc>ha
-inoremap " ""<Esc>ha
-inoremap ' ''<Esc>ha
-inoremap ` ``<Esc>ha
 
 " Use ctrl-[hjkl] to select the active split
 nnoremap <silent> <C-k> <c-w>k<CR>
