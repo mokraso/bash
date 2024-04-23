@@ -1,0 +1,140 @@
+alias tea='terraform apply --auto-approve'
+alias tep='terraform destroy --auto-approve'
+alias pip=pip3
+alias k=kubectl
+alias py=python3
+alias dockerdown='docker kill $(docker ps -q)'
+alias seed='php artisan migrate:fresh --seed'
+alias tinker='php artisan tinker'
+alias t='cd ~/Desktop/tasco'
+alias dyrm="aws dynamodb list-tables --endpoint-url http://localhost:8001 | jq .'TableNames[]' -r | xargs -ITABLE -n 1 aws dynamodb delete-table --table-name TABLE --endpoint-url http://localhost:8001"
+alias gitp='git pull origin $(git branch --show-current)'
+alias gitr='git stash -u;git reset --hard origin/$(git branch --show-current); git pull origin $(git branch --show-current)'
+# alias du='docker compose up -d;docker compose -p ss --env-file .env.secondary up -d'
+alias ddd='docker-compose down --remove-orphans;'
+alias slogin='php artisan tinker --execute="print_r(\"authorkey=\".App\Models\User::find(8)->createToken(\"authToken\")->plainTextToken)" >> .env.backup'
+alias mongo='mongosh "mongodb://lai:admin@localhost:27017/admin?authSource=admin"'
+
+# php artisan 
+alias ser='php artisan ser'
+# alias test='php artisan test --stop-on-failure'
+alias test2='php artisan test --parallel --recreate-databases'
+alias route='php artisan route:list | grep'
+
+dvpn() {
+    dcli password -f otp title="0 tasco"
+    key=$(pbpaste)
+    echo -n "2kstIunu$key" | pbcopy
+}
+
+test1() {
+    if [ -n "$1" ]; then
+        php artisan test --filter $1
+    else
+        php artisan test --stop-on-failure
+    fi
+}
+
+du() {
+    if [[ "$1" == "2" ]]; then
+        docker compose up -d;docker compose -p ss --env-file .env.secondary up -d;
+    else
+        docker compose up -d;
+    fi
+}
+
+gitl() {
+    branch_name="main";
+    echo $branch_name;
+    if [ -n "$1" ]; then
+        branch_name="$1"
+    fi
+
+    git checkout $branch_name;
+
+    git pull origin $branch_name;
+
+    # git checkout -;
+    # git merge -
+}
+
+gcl() {
+
+    local cloudUser="$1"
+    local credentialFile=""
+    local authUser=""
+
+    case "$cloudUser" in
+        default)
+            authUser="default"
+            ;;
+        tasco-admin)
+            echo "enter to admin"
+            credentialFile="/Users/lai/.ssh/admin@tasco.json"
+            authUser="tasco-admin"
+            ;;
+        tasco)
+            credentialFile="/Users/lai/.ssh/lai-dq@tasco.json"
+            authUser="tasco"
+            ;;
+        *)
+            echo "Invalid input, it should be default/tasco/tasco-admin"
+            return 1
+            ;;
+    esac
+
+    gcloud config configurations activate $authUser
+    export GOOGLE_BACKEND_CREDENTIALS="$credentialFile"
+}
+
+gita() {
+
+    # check BaseTestCase ignore database transaction or not
+    search_string="\/\/ use DatabaseTransactions;"
+    replace_string="use DatabaseTransactions;"
+    file_path="/Users/lai/Desktop/simple_venv/tests/base/BaseTestCase.php"
+
+    # Use sed to replace the line if it contains the search string
+    gsed -i "s/$search_string/$replace_string/g" "$file_path"
+
+    # check branch is main or not
+    current_branch=$(git branch --show-current)
+    if [[ "$current_branch" == "dev-main-branch" ]]; then
+        echo -e "\e[31m Current on dev-main-branch, please checkout to another branch.\e[0m"
+        return 
+    fi
+
+    git add -A
+
+    # make sure user would like to signature this commit
+    if [[ $2 == "signature" ]]; then
+        git commit -S -m $1
+    else
+        git commit -m $1
+    fi
+
+    git push
+}
+
+addip () {
+    
+    # add my ip to white list
+    FIREWALL_RULE_NAME="allow-tcp"
+    GKE_CLUSTER_NAME="prod-data-platform"
+
+    # Check if user provided an IP address
+    if [ -n "$1" ]; then
+        IP="$1"
+    else
+        IP=$(curl -s ifconfig.me)
+    fi
+
+    CURRENT_IP_RANGES=$(gcloud compute firewall-rules describe $FIREWALL_RULE_NAME --format="value[delimiter=',',terminator=','](sourceRanges)")
+    gcloud compute firewall-rules update $FIREWALL_RULE_NAME --source-ranges="${CURRENT_IP_RANGES}${IP}/32" --quiet
+    GKE_OLD_CIDR=$(gcloud container clusters describe $GKE_CLUSTER_NAME --format json | jq -r '.masterAuthorizedNetworksConfig.cidrBlocks[] | .cidrBlock' | tr '\n' ',')
+    gcloud container clusters update $GKE_CLUSTER_NAME --master-authorized-networks "$GKE_OLD_CIDR$IP/32" --enable-master-authorized-networks
+}
+
+ssh2() {
+    ssh -i ~/.ssh/ansible.id_rsa ansible@$1
+}
