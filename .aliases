@@ -138,3 +138,10 @@ addip () {
 ssh2() {
     ssh -i ~/.ssh/ansible.id_rsa ansible@$1
 }
+
+bashsync() {
+    cp ~/.aliases ~/Documents/mokraso-bash
+    cp ~/.vimrc ~/Documents/mokraso-bash
+    gita "[auto update] $1"
+}
+
