@@ -88,19 +88,21 @@ gcl() {
 }
 
 gita() {
+    MAIN_BRANCH_NAME="main"
 
-    # check BaseTestCase ignore database transaction or not
-    search_string="\/\/ use DatabaseTransactions;"
-    replace_string="use DatabaseTransactions;"
-    file_path="/Users/lai/Desktop/simple_venv/tests/base/BaseTestCase.php"
-
-    # Use sed to replace the line if it contains the search string
-    gsed -i "s/$search_string/$replace_string/g" "$file_path"
+    # # check BaseTestCase ignore database transaction or not
+    # search_string="\/\/ use DatabaseTransactions;"
+    # replace_string="use DatabaseTransactions;"
+    # file_path="/Users/lai/Desktop/simple_venv/tests/base/BaseTestCase.php"
+    ## Use sed to replace the line if it contains the search string
+    # gsed -i "s/$search_string/$replace_string/g" "$file_path"
 
     # check branch is main or not
     current_branch=$(git branch --show-current)
-    if [[ "$current_branch" == "dev-main-branch" ]]; then
-        echo -e "\e[31m Current on dev-main-branch, please checkout to another branch.\e[0m"
+
+
+    if [[ "$current_branch" == "$MAIN_BRANCH_NAME" ]]; then
+        echo -e "\e[31m Current on $MAIN_BRANCH_NAME, please checkout to another branch.\e[0m"
         return 
     fi
 
@@ -131,8 +133,11 @@ addip () {
 
     CURRENT_IP_RANGES=$(gcloud compute firewall-rules describe $FIREWALL_RULE_NAME --format="value[delimiter=',',terminator=','](sourceRanges)")
     gcloud compute firewall-rules update $FIREWALL_RULE_NAME --source-ranges="${CURRENT_IP_RANGES}${IP}/32" --quiet
-    GKE_OLD_CIDR=$(gcloud container clusters describe $GKE_CLUSTER_NAME --format json | jq -r '.masterAuthorizedNetworksConfig.cidrBlocks[] | .cidrBlock' | tr '\n' ',')
-    gcloud container clusters update $GKE_CLUSTER_NAME --master-authorized-networks "$GKE_OLD_CIDR$IP/32" --enable-master-authorized-networks
+
+    if [[ "$2" == "gke" ]]; then
+        GKE_OLD_CIDR=$(gcloud container clusters describe $GKE_CLUSTER_NAME --format json | jq -r '.masterAuthorizedNetworksConfig.cidrBlocks[] | .cidrBlock' | tr '\n' ',')
+        gcloud container clusters update $GKE_CLUSTER_NAME --master-authorized-networks "$GKE_OLD_CIDR$IP/32" --enable-master-authorized-networks
+    fi
 }
 
 ssh2() {
@@ -140,8 +145,12 @@ ssh2() {
 }
 
 bashsync() {
-    cp ~/.aliases ~/Documents/mokraso-bash
-    cp ~/.vimrc ~/Documents/mokraso-bash
-    gita "[auto update] $1"
+    cd ~/Documents/mokraso-bash
+    cp ~/.aliases ./
+    cp ~/.vimrc ./
+    git add -A
+    git commit -m "[auto update] $1"
+    git push
+    cd -
 }
 
