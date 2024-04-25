@@ -150,6 +150,7 @@ bashsync() {
     cp ~/.aliases ./
     cp ~/Documents/iterm.json ./
     cp ~/.vimrc ./
+    cp ~/.zshrc ./
     git add -A
     git commit -m "[auto update] $1"
     git push
