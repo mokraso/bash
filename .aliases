@@ -148,7 +148,7 @@ ssh2() {
 bashsync() {
     cd ~/Documents/mokraso-bash
     cp ~/.aliases ./
-    cp ~/Documents/iterm.json
+    cp ~/Documents/iterm.json ./
     cp ~/.vimrc ./
     git add -A
     git commit -m "[auto update] $1"
