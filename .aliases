@@ -129,6 +129,7 @@ addip () {
         IP="$1"
     else
         IP=$(curl -s ifconfig.me)
+        echo "$IP\r\n" >> ~/tasco-ip
     fi
 
     CURRENT_IP_RANGES=$(gcloud compute firewall-rules describe $FIREWALL_RULE_NAME --format="value[delimiter=',',terminator=','](sourceRanges)")
@@ -147,6 +148,7 @@ ssh2() {
 bashsync() {
     cd ~/Documents/mokraso-bash
     cp ~/.aliases ./
+    cp ~/Documents/iterm.json
     cp ~/.vimrc ./
     git add -A
     git commit -m "[auto update] $1"
