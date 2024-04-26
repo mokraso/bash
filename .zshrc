@@ -9,16 +9,6 @@ export PROMPT='${COLOR_DIR}%1d${COLOR_DEF}${COLOR_GIT}$(parse_git_branch)${COLOR
 
 source /Users/lai/.docker/init-zsh.sh || true # Added by Docker Desktop
 
-dy()
-{
-  aws dynamodb scan --table-name $1 --endpoint-url=http://localhost:8001
-}
-
-killport()
-{
-kill -9 $(lsof -i:$1 -t) 2> /dev/null
-}
-
 autoload -U +X bashcompinit && bashcompinit
 autoload -Uz compinit && compinit
 complete -o nospace -C /opt/homebrew/bin/terraform terraform
