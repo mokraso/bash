@@ -1,3 +1,13 @@
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/Users/lai/Downloads/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/lai/Downloads/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '/Users/lai/Downloads/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/lai/Downloads/google-cloud-sdk/completion.zsh.inc'; fi
+export PATH=/opt/homebrew/bin:$PATH
+
+export GPG_TTY=$(tty)
+
 parse_git_branch() {
     git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ \1/'
 }
@@ -7,22 +17,13 @@ COLOR_GIT='%F{76}'
 setopt PROMPT_SUBST
 export PROMPT='${COLOR_DIR}%1d${COLOR_DEF}${COLOR_GIT}$(parse_git_branch)${COLOR_DEF} $ '
 
-source /Users/lai/.docker/init-zsh.sh || true # Added by Docker Desktop
-
-autoload -U +X bashcompinit && bashcompinit
-autoload -Uz compinit && compinit
-complete -o nospace -C /opt/homebrew/bin/terraform terraform
-
 source ~/.aliases
-
 export HOMEBREW_NO_AUTO_UPDATE=1
 
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/Users/lai/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/lai/google-cloud-sdk/path.zsh.inc'; fi
+export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
 
-# The next line enables shell command completion for gcloud.
-if [ -f '/Users/lai/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/lai/google-cloud-sdk/completion.zsh.inc'; fi
+export WORDCHARS='*?_-.[]~=/&;!#$%^(){}<>'
+autoload -Uz select-word-style
+select-word-style normal
 
-export PATH=/opt/homebrew/opt/mysql-client/bin:$PATH
-export GPG_TTY=$(tty)
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_202.jdk/Contents/Home
+export PATH="/opt/homebrew/opt/openjdk/bin:/Users/lai/dbt-env/bin/:$PATH"

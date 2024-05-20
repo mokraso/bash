@@ -14,17 +14,22 @@ alias gitr='git stash -u;git reset --hard origin/$(git branch --show-current); g
 alias ddd='docker-compose down --remove-orphans;'
 alias slogin='php artisan tinker --execute="print_r(\"authorkey=\".App\Models\User::find(8)->createToken(\"authToken\")->plainTextToken)" >> .env.backup'
 alias mongo='mongosh "mongodb://lai:admin@localhost:27017/admin?authSource=admin"'
+alias gg2='open -n -a /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --args --user-data-dir="/tmp/chrome_dev_test" --disable-web-security'
 
 # php artisan 
 alias ser='php artisan ser'
+alias env_dbt='source ~/dbt-env/bin/activate'
+
 # alias test='php artisan test --stop-on-failure'
 alias test2='php artisan test --parallel --recreate-databases'
 alias route='php artisan route:list | grep'
 
 dvpn() {
-    dcli password -f otp title="0 tasco"
-    key=$(pbpaste)
-    echo -n "2kstIunu$key" | pbcopy
+    response=$(dcli password title="forti-client-2fa")
+    password=$(pbpaste)
+
+    otp=$(echo "$response" | grep -o '🔢 OTP code: [0-9]*' | awk '{print $4}')
+    echo -n "$password$otp" | pbcopy
 }
 
 test1() {
@@ -138,6 +143,10 @@ addip () {
     if [[ "$2" == "gke" ]]; then
         GKE_OLD_CIDR=$(gcloud container clusters describe $GKE_CLUSTER_NAME --format json | jq -r '.masterAuthorizedNetworksConfig.cidrBlocks[] | .cidrBlock' | tr '\n' ',')
         gcloud container clusters update $GKE_CLUSTER_NAME --master-authorized-networks "$GKE_OLD_CIDR$IP/32" --enable-master-authorized-networks
+
+        GKE_CLUSTER_NAME="prod-data-platform-tasco"
+        GKE_OLD_CIDR=$(gcloud container clusters describe $GKE_CLUSTER_NAME --format json | jq -r '.masterAuthorizedNetworksConfig.cidrBlocks[] | .cidrBlock' | tr '\n' ',')
+        gcloud container clusters update $GKE_CLUSTER_NAME --master-authorized-networks "$GKE_OLD_CIDR$IP/32" --enable-master-authorized-networks
     fi
 }
 
@@ -146,11 +155,18 @@ ssh2() {
 }
 
 bashsync() {
+    files=(
+        "~/.aliases"
+        "~/Documents/iterm.json"
+        "~/.vimrc"
+    )
     cd ~/Documents/mokraso-bash
-    cp ~/.aliases ./
-    cp ~/Documents/iterm.json ./
-    cp ~/.vimrc ./
-    cp ~/.zshrc ./
+
+
+# Loop through each file in the list
+    for file in "${files[@]}"; do
+        cp "$file" ./
+    done
     git add -A
     git commit -m "[auto update] $1"
     git push
