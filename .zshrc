@@ -27,3 +27,7 @@ autoload -Uz select-word-style
 select-word-style normal
 
 export PATH="/opt/homebrew/opt/openjdk/bin:/Users/lai/dbt-env/bin/:$PATH"
+export do=' --dry-run=client -oyaml'
+
+source <(kubectl completion zsh)
+
