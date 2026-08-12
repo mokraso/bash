@@ -1,2 +1,5 @@
 export GTK_THEME=Yaru-dark
 
+# Load Xft.dpi / font rendering overrides so DPI-scaling apps (Qt, GTK2, xterm) also get bigger fonts
+[ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
+

@@ -10,6 +10,7 @@ Bản backup/version-control cho cấu hình i3 window manager + polybar đang d
 ├── startup.sh                # ~/.config/i3/startup.sh   - script mở app theo workspace (không được gọi tự động)
 ├── monitor.sh                # ~/.config/i3/monitor.sh   - tự động cấu hình xrandr khi cắm/rút màn hình ngoài
 ├── xprofile                  # ~/.xprofile               - biến môi trường set khi bắt đầu X session
+├── Xresources                # ~/.Xresources             - Xft.dpi + font rendering, nạp vào X session qua `xrdb -merge` trong xprofile
 ├── autostart/                # ~/.config/autostart/*.desktop - override tắt bớt autostart app dưới i3 (xem phần "Đã sửa" bên dưới)
 │   ├── ibus.desktop
 │   ├── autorandr.desktop
@@ -31,6 +32,7 @@ Bản backup/version-control cho cấu hình i3 window manager + polybar đang d
 ### `config` (i3 main config)
 File do `i3-config-wizard` sinh ban đầu rồi chỉnh tay. Các phần đáng chú ý:
 - `set $mod Mod4` — phím mod là Super.
+- `font pango:monospace 11` — font title bar/bar mặc định (tăng từ size 8 để dễ đọc hơn trên màn hình DPI cao).
 - Autostart (`exec`/`exec_always`):
   - `dex --autostart --environment i3` — chạy toàn bộ XDG autostart `.desktop` phù hợp môi trường `i3` (đã bớt tải, xem phần "Đã sửa để start nhanh hơn").
   - `xss-lock ... i3lock` — khoá màn hình khi suspend.
@@ -49,16 +51,36 @@ Script tiện ích để mở sẵn app theo từng workspace (terminal, firefox
 Detect màn hình ngoài (`HDMI-1`) qua `xrandr`; nếu có thì bật HDMI làm primary và tắt màn laptop (`eDP-1`), nếu không thì chỉ bật laptop. Được gán vào cả `exec_always` (chạy mỗi lần i3 start/reload) và bind `$mod+Shift+d` để chạy tay.
 
 ### `xprofile`
-Chỉ set `GTK_THEME=Yaru-dark` cho GTK app hiển thị đúng theme dark khi không chạy full GNOME session.
+Set `GTK_THEME=Yaru-dark` cho GTK app hiển thị đúng theme dark khi không chạy full GNOME session; và `xrdb -merge ~/.Xresources` để nạp `Xft.dpi`/font rendering cho các app đọc DPI trực tiếp (Qt, GTK2, xterm-family, Java).
+
+### `Xresources`
+`Xft.dpi 120` (96 × 1.25) — tăng font mặc định cho app không nằm trong phạm vi i3/polybar/GTK3 (vd. Qt apps, xterm). Đi kèm antialiasing/hinting mặc định (`hintslight`, `rgb`).
 
 ### `polybar/config.ini`
-Theme Catppuccin-ish (`#1e1e2e` / `#cdd6f4` / `#89b4fa`). Bar `main` cao 28px, đặt top, modules trái: `i3 xwindow`; phải: `cpu memory network volume ibus date`. Module `network` hard-code interface `wlp0s20f3`. Module `ibus` là `custom/script` gọi `scripts/ibus.sh` mỗi giây.
+Theme Catppuccin-ish (`#1e1e2e` / `#cdd6f4` / `#89b4fa`). Bar `main` cao 32px (tăng từ 28px cho vừa font lớn hơn), đặt top, modules trái: `i3 xwindow`; phải: `cpu memory network volume ibus date`. Font `JetBrainsMono Nerd Font size=12`. Module `network` hard-code interface `wlp0s20f3`. Module `ibus` là `custom/script` gọi `scripts/ibus.sh` mỗi giây.
 
 ### `polybar/launch.sh`
 `killall polybar` rồi `polybar main &` — pattern chuẩn để tránh chạy trùng bar khi reload i3.
 
 ### `polybar/scripts/ibus.sh`
 Đọc `ibus engine` hiện tại, in `VI` nếu là `Bamboo*`, `EN` nếu là `xkb:us*`, còn lại in `??`. Polybar poll script này mỗi giây để hiện trạng gõ trên bar.
+
+## Tăng font toàn hệ thống (không chỉ riêng i3)
+
+`font` trong `config` và `font-0` trong `polybar/config.ini` chỉ đổi font của title bar/bar — **không** ảnh hưởng tới font bên trong các app khác (Firefox, Nautilus, GTK/Qt apps...). Để tăng font cho phần đó cần sửa thêm 2 chỗ nằm **ngoài phạm vi của repo này** (không phải file i3/polybar):
+
+| Chỗ sửa | Đường dẫn thật | Ghi chú |
+|---|---|---|
+| GTK3 (Nautilus, GNOME apps, hầu hết app GTK) | `~/.config/gtk-3.0/settings.ini`, key `gtk-font-name` (vd. `Sans 16`) | **Không track trong repo này** vì nằm ngoài phạm vi i3/polybar — sửa trực tiếp file sống, cần mở lại app để nhận font mới |
+| Qt/GTK2/xterm-family/Java (app không đọc GTK3 settings) | `~/.Xresources` (bản đây), key `Xft.dpi` (96 = mặc định, 120 = 1.25×, 144 = 1.5×) | **Có track** trong repo này (`Xresources`), nạp vào X session qua `xrdb -merge ~/.Xresources` trong `xprofile` |
+
+Cách áp dụng ngay không cần logout:
+```sh
+xrdb -merge ~/.Xresources   # áp dụng Xresources
+i3-msg reload                # áp dụng lại i3 config (font title bar)
+bash ~/.config/polybar/launch.sh   # restart polybar (font bar)
+```
+GTK3 (`gtk-font-name`) và các app đang mở sẵn thì phải mở lại app mới thấy đổi — không có lệnh reload tương đương.
 
 ## Vì sao i3 start lâu hơn GNOME?
 
