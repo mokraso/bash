@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=IBus Daemon
+Comment=IBus Input Method Framework
+Exec=ibus-daemon -drx
+Icon=ibus
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=false
+Hidden=false
+NotShowIn=i3;

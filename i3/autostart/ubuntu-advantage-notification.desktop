@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Ubuntu Advantage Notification
+Comment=Notifies user if user has not connected to Ubuntu Advantage.
+Exec=/usr/lib/update-notifier/ubuntu-advantage-notification
+Type=Application
+NoDisplay=true
+X-GNOME-Autostart-Delay=60
+NotShowIn=i3;

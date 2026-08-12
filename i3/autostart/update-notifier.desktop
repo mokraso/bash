@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Update Notifier
+Comment=Check for available updates automatically
+Icon=update-notifier
+Exec=update-notifier
+Terminal=false
+Type=Application
+NotShowIn=KDE;i3;
+NoDisplay=true
+X-GNOME-Autostart-Delay=60
