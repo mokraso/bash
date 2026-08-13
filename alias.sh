@@ -1,6 +1,9 @@
 # claude code without confirm
 alias cc='claude --dangerously-skip-permissions'
 
+# yank to copy everything
+alias yank='tr -d "\n" | xclip -selection clipboard'
+
 lssm() {
   # default index = 1 (zsh arrays are 1-indexed)
   local index="${1:-1}"
@@ -66,4 +69,51 @@ sql1 () {
   cat "$output_file"
   echo
   echo "cat $output_file"
+}
+
+epoch () {
+    local ts=$1
+
+    if [ -z "$ts" ]; then
+        echo "Usage: epoch <timestamp>"
+        return 1
+    fi
+
+    ts=${ts:0:10}
+
+    echo "UTC   : $(date -u -d @"$ts" "+%Y-%m-%d %H:%M:%S")"
+    echo "UTC+7 : $(TZ=Asia/Ho_Chi_Minh date -d @"$ts" "+%Y-%m-%d %H:%M:%S")"
+}
+
+pyac () {
+    local venvs
+    venvs=("$HOME/.edata/core-ai-platform/.venv")
+
+    # Case B: has parameter → use index
+    if [[ -n "$1" ]]; then
+        local idx=$1
+        local venv_path="${venvs[$((idx-1))]}"
+
+        if [[ -z "$venv_path" ]]; then
+            echo "Invalid index (valid: 1-${#venvs[@]})"
+            return 1
+        fi
+    else
+        # Case A: no param → check local .venv first
+        if [[ -d ".venv" ]]; then
+            venv_path="$(pwd)/.venv"
+        else
+            venv_path="${venvs[0]}"
+        fi
+    fi
+
+    local activate_file="$venv_path/bin/activate"
+
+    if [[ ! -f "$activate_file" ]]; then
+        echo "Activate file not found: $activate_file"
+        return 1
+    fi
+
+    source "$activate_file"
+    echo "Activated venv: $venv_path"
 }
