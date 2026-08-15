@@ -1,4 +1,4 @@
-# windows-alias
+# windows
 
 Script/tiện ích dùng trên máy Windows.
 
@@ -26,15 +26,3 @@ Script gọi thẳng lệnh `ssh-keygen` sau khi cài Git, nhưng **`ssh-keygen.
 Vì vậy gọi bare `ssh-keygen` báo lỗi "not recognized" → nhánh `[FAILED] SSH key generation failed.` luôn bị trigger dù Git cài thành công.
 
 Đã sửa: script giờ tự dò `ssh-keygen.exe` giống cách dò `git.exe`/`node.exe` (qua `where`, rồi tới `Git\usr\bin\ssh-keygen.exe` ở cả `%ProgramFiles%` và `%LocalAppData%\Programs`), rồi gọi bằng full path thay vì tên lệnh trần. Nếu vẫn không tìm thấy thì báo rõ nguyên nhân (thiếu OpenSSH trong bản Git đã cài) thay vì fail âm thầm. Cũng bỏ luôn `pause` bị lặp 2 lần ở cuối script.
-
-### Bug đã fix: cửa sổ tự đóng giữa chừng, không log, không báo lỗi
-
-Toàn bộ logic chính của script (kiểm tra/cài Git, Node, Claude Code, generate SSH key) luôn hội tụ về phần *FINAL REPORT* rồi `pause` ở cuối, kể cả khi một bước FAIL — nên nếu cửa sổ biến mất mà không thấy report này, script tự nó không phải là nguyên nhân.
-
-Thủ phạm thực tế nằm ở bước tự xin quyền Admin đầu file: khi chưa chạy với quyền Admin, script gọi `powershell ... Start-Process -Verb RunAs` để mở lại chính nó ở cửa sổ elevated, rồi `exit /b 0` ngay lập tức — **bất kể việc relaunch có thành công hay không**. Nếu:
-- người dùng bấm "No"/tắt hộp thoại UAC, hoặc
-- file `.cmd` đang được chạy trực tiếp từ trong file `.zip` chưa giải nén, hoặc từ đường dẫn network share / OneDrive "online-only"
-
-thì cửa sổ elevated thứ hai **không bao giờ mở được**, và cửa sổ đầu tiên chỉ kịp in "Requesting Administrator permission..." rồi đóng ngay — nhìn giống như app "chạy được một chút rồi thoát đột ngột, không log, không báo fail bước nào".
-
-Đã sửa: bọc lệnh `Start-Process -Verb RunAs` trong `try/catch` để bắt lỗi relaunch, kiểm tra exit code của PowerShell. Nếu relaunch thất bại, script giờ in rõ các nguyên nhân thường gặp (UAC bị từ chối, chạy từ trong zip, chạy từ network/cloud-sync path), ghi lại vào `install-dev-tools.log`, và `pause` trước khi thoát — thay vì đóng cửa sổ âm thầm.
