@@ -39,7 +39,31 @@ if %ERRORLEVEL% NEQ 0 (
     echo.
 
     powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "Start-Process -FilePath '%~f0' -Verb RunAs"
+        "try { Start-Process -FilePath '%~f0' -Verb RunAs -ErrorAction Stop } catch { Write-Host $_.Exception.Message; exit 1 }"
+
+    if !ERRORLEVEL! NEQ 0 (
+
+        echo.
+        echo [FAILED] Could not relaunch this script as Administrator.
+        echo.
+        echo Common causes:
+        echo   - The UAC prompt was declined or dismissed.
+        echo   - This .cmd is being run directly from inside a .zip file
+        echo     ^(extract it to a normal folder first^).
+        echo   - This .cmd is on a network share or a cloud-sync path
+        echo     ^(e.g. OneDrive "online-only" file^) that Windows cannot
+        echo     elevate directly - copy it to a local folder and retry.
+        echo.
+        echo You can also skip this check entirely by opening an already
+        echo elevated Command Prompt ^(right-click cmd.exe -^> Run as
+        echo administrator^) and running this .cmd from there.
+
+        echo Elevation FAILED (exit !ERRORLEVEL!): %DATE% %TIME% >> "%LOGFILE%"
+
+        echo.
+        pause
+        exit /b 1
+    )
 
     exit /b 0
 )
