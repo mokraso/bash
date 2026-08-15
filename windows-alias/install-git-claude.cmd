@@ -694,9 +694,52 @@ echo.
 echo ============================================================
 echo.
 
+echo ============================================================
+echo SSH KEY FOR GIT
+echo ============================================================
+echo.
+
 set "SSH_DIR=%USERPROFILE%\.ssh"
 set "SSH_KEY=%SSH_DIR%\id_ed25519"
 set "SSH_PUB=%SSH_DIR%\id_ed25519.pub"
+
+:: ------------------------------------------------------------
+:: Locate ssh-keygen.exe
+:: NOTE: Git for Windows adds only "cmd\" or "bin\" to PATH above.
+:: ssh-keygen.exe actually lives under "usr\bin\", which is why a
+:: bare "ssh-keygen" call used to fail with "not recognized".
+:: ------------------------------------------------------------
+
+set "SSHKEYGEN_EXE="
+
+where ssh-keygen >nul 2>&1
+
+if %ERRORLEVEL% EQU 0 (
+    for /f "delims=" %%S in ('where ssh-keygen 2^>nul') do (
+        set "SSHKEYGEN_EXE=%%S"
+        goto SSHKEYGEN_FOUND
+    )
+)
+
+if exist "%ProgramFiles%\Git\usr\bin\ssh-keygen.exe" (
+    set "SSHKEYGEN_EXE=%ProgramFiles%\Git\usr\bin\ssh-keygen.exe"
+    goto SSHKEYGEN_FOUND
+)
+
+if exist "%LocalAppData%\Programs\Git\usr\bin\ssh-keygen.exe" (
+    set "SSHKEYGEN_EXE=%LocalAppData%\Programs\Git\usr\bin\ssh-keygen.exe"
+    goto SSHKEYGEN_FOUND
+)
+
+echo [FAILED] ssh-keygen.exe not found.
+echo [INFO] It ships with Git for Windows under "usr\bin". Reinstall Git and try again.
+
+echo SSH key generation FAILED - ssh-keygen.exe not found. >> "%LOGFILE%"
+
+goto SSH_DONE
+
+
+:SSHKEYGEN_FOUND
 
 :: Tạo .ssh nếu chưa tồn tại
 if not exist "%SSH_DIR%" (
@@ -707,16 +750,21 @@ if not exist "%SSH_DIR%" (
 if exist "%SSH_KEY%" (
     echo [OK] SSH key already exists:
     echo      %SSH_KEY%
+
+    echo SSH key already exists: %SSH_KEY% >> "%LOGFILE%"
 ) else (
     echo [INFO] Generating SSH key...
+    echo [PATH] %SSHKEYGEN_EXE%
 
-    ssh-keygen -t ed25519 ^
+    "%SSHKEYGEN_EXE%" -t ed25519 ^
         -f "%SSH_KEY%" ^
         -N "" ^
         -q
 
     if errorlevel 1 (
         echo [FAILED] SSH key generation failed.
+
+        echo SSH key generation FAILED. >> "%LOGFILE%"
     ) else (
         echo [SUCCESS] SSH key generated.
         echo.
@@ -725,10 +773,17 @@ if exist "%SSH_KEY%" (
         echo.
         echo Public key:
         echo %SSH_PUB%
+
+        echo SSH key generated: %SSH_KEY% >> "%LOGFILE%"
     )
 )
 
-pause
+:SSH_DONE
+
+echo.
+echo ============================================================
+echo.
+
 echo Finished: %DATE% %TIME% >> "%LOGFILE%"
 
 pause
