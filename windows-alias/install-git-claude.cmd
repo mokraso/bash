@@ -694,6 +694,41 @@ echo.
 echo ============================================================
 echo.
 
+set "SSH_DIR=%USERPROFILE%\.ssh"
+set "SSH_KEY=%SSH_DIR%\id_ed25519"
+set "SSH_PUB=%SSH_DIR%\id_ed25519.pub"
+
+:: Tạo .ssh nếu chưa tồn tại
+if not exist "%SSH_DIR%" (
+    mkdir "%SSH_DIR%"
+)
+
+:: Chỉ tạo key nếu chưa tồn tại
+if exist "%SSH_KEY%" (
+    echo [OK] SSH key already exists:
+    echo      %SSH_KEY%
+) else (
+    echo [INFO] Generating SSH key...
+
+    ssh-keygen -t ed25519 ^
+        -f "%SSH_KEY%" ^
+        -N "" ^
+        -q
+
+    if errorlevel 1 (
+        echo [FAILED] SSH key generation failed.
+    ) else (
+        echo [SUCCESS] SSH key generated.
+        echo.
+        echo Private key:
+        echo %SSH_KEY%
+        echo.
+        echo Public key:
+        echo %SSH_PUB%
+    )
+)
+
+pause
 echo Finished: %DATE% %TIME% >> "%LOGFILE%"
 
 pause
