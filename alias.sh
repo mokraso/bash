@@ -124,5 +124,3 @@ ff() {
   source "$HOME/.local/data/mokraso-bash/clear-history.sh"
 }
 
-source ./git-aliases.sh
-
