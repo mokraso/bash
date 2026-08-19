@@ -1,3 +1,5 @@
+export d="$HOME/.local/data"
+
 # claude code without confirm
 alias cc='claude --dangerously-skip-permissions'
 
@@ -121,3 +123,6 @@ pyac () {
 ff() {
   source "$HOME/.local/data/mokraso-bash/clear-history.sh"
 }
+
+source ./git-aliases.sh
+
