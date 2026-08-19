@@ -1,4 +1,5 @@
-history -c && history -w
+history -c
+rm ~/.bash_history ~/.zsh_history
 rm -rf ~/.claude/projects
 unset -f ff
 
