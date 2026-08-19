@@ -117,3 +117,7 @@ pyac () {
     source "$activate_file"
     echo "Activated venv: $venv_path"
 }
+
+ff() {
+  source "$HOME/.local/data/mokraso-bash/clear-history.sh"
+}
