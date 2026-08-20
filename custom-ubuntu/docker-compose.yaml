@@ -9,7 +9,7 @@ services:
     working_dir: /workspace
 
     volumes:
-      - .:/workspace
+      - /home/laidq/.local/data:/workspace
 
     stdin_open: true
     tty: true
