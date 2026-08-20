@@ -4,13 +4,34 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    container_name: claude
+      args:
+        UID: ${HOST_UID}
+        GID: ${HOST_UID}
+        CLAUDE_VERSION: 2.1.237
+
+    container_name: claude-dev
+
+    user: "1002:1002"
 
     working_dir: /workspace
 
     volumes:
+      # Source code
       - /home/laidq/.local/data:/workspace
+
+      # Persist Claude Code authentication/config
+      - claude-config:/home/claude/.claude
+
+      # Persist Neovim plugin/cache data
+      - nvim-data:/home/claude/.local/share/nvim
+      - nvim-state:/home/claude/.local/state/nvim
+      - nvim-cache:/home/claude/.cache/nvim
 
     stdin_open: true
     tty: true
 
+volumes:
+  claude-config:
+  nvim-data:
+  nvim-state:
+  nvim-cache:
