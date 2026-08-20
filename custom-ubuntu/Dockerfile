@@ -8,6 +8,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y \
         curl \
+        vim \
+        neovim \
         git \
         ca-certificates \
         build-essential && \
@@ -42,6 +44,8 @@ RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_VERSION}
 # Verify Claude Code installation
 # --------------------------------------------------
 RUN claude --version
+
+RUN echo "alias cc='claude --dangerously-skip-permissions'" >> ~/.bashrc
 
 # --------------------------------------------------
 # Workspace
