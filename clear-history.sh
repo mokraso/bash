@@ -4,7 +4,7 @@ rm -rf ~/.claude/projects
 
 if [ -z "$1" ]; then
   unset -f ff
-  claude auth logout
+  claude auth logout > /dev/null 2>&1
   echo "zsh: command not found: ff"
 fi
 

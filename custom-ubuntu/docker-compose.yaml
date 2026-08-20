@@ -1,0 +1,16 @@
+services:
+  claude:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: claude
+
+    working_dir: /workspace
+
+    volumes:
+      - .:/workspace
+
+    stdin_open: true
+    tty: true
+
