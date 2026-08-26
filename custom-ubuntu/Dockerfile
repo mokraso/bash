@@ -49,7 +49,8 @@ RUN groupadd --gid ${GID} claude && \
         --create-home \
         --shell /bin/bash \
         claude && \
-    usermod -aG sudo claude
+    usermod -aG sudo claude && \
+    echo "claude:admin" | chpasswd
 
 # --------------------------------------------------
 # Claude Code
@@ -57,6 +58,11 @@ RUN groupadd --gid ${GID} claude && \
 ARG CLAUDE_VERSION=2.1.237
 
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_VERSION}
+
+# --------------------------------------------------
+# OpenAI Codex CLI
+# --------------------------------------------------
+RUN npm install -g @openai/codex
 
 # --------------------------------------------------
 # Install Neovim
@@ -82,9 +88,21 @@ RUN git clone https://github.com/lai-2/vim.git \
     /home/claude/.config/nvim
 
 # --------------------------------------------------
+# Google Antigravity CLI (agy)
+# --------------------------------------------------
+RUN curl -fsSL https://antigravity.google/cli/install.sh | bash
+
+ENV PATH="/home/claude/.local/bin:${PATH}"
+
+# --------------------------------------------------
 # Claude config directory
 # --------------------------------------------------
 RUN mkdir -p /home/claude/.claude
+
+# --------------------------------------------------
+# Install alias
+# --------------------------------------------------
+RUN echo "alias cc='claude --dangerously-skip-permissions'" >> ~/.bashrc
 
 WORKDIR /workspace
 
