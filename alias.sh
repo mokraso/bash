@@ -6,6 +6,9 @@ alias cc='claude --dangerously-skip-permissions'
 # yank to copy everything
 alias yank='tr -d "\n" | xclip -selection clipboard'
 
+# play music
+alias lmp3='cvlc --random --extraintf rc --rc-fake-tty $d/lai-2-temp/*.mp3'
+
 lssm() {
   # default index = 1 (zsh arrays are 1-indexed)
   local index="${1:-1}"
