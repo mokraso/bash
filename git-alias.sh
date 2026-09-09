@@ -61,6 +61,36 @@ gita() {
   fi
 
   # -----------------------------
+  # Check number of changed files
+  # Must happen BEFORE git add/commit
+  # -----------------------------
+  local changed_file_count
+  changed_file_count=$(
+    git status --porcelain=v1 --untracked-files=all |
+    wc -l
+  )
+
+  if (( changed_file_count > 10 )); then
+    echo
+    echo -e "\033[1;31m============================================================\033[0m"
+    echo -e "\033[1;31m❌ COMMIT BLOCKED: $changed_file_count files are changed\033[0m"
+    echo -e "\033[1;31m============================================================\033[0m"
+    echo
+    echo -e "\033[1;31mThis commit contains more than 10 files.\033[0m"
+    echo -e "\033[1;31mFor safety, gita will NOT run git add, git commit, or git push.\033[0m"
+    echo
+    echo -e "\033[1;31mIf this large commit is intentional, run manually:\033[0m"
+    echo
+    echo "git add -A"
+    echo "git commit -m \"$TEMP_GIT_COMMIT_MESSAGE\""
+    echo "git push"
+    echo
+    echo -e "\033[1;31mChanged files: $changed_file_count\033[0m"
+    echo -e "\033[1;31m============================================================\033[0m"
+    return 1
+  fi
+
+  # -----------------------------
   # Handle CLAUDE.md + Git operations
   # -----------------------------
   if [[ -f "$claude_file" ]]; then
@@ -72,18 +102,22 @@ gita() {
     else
       # No allow-claude.log: move CLAUDE.md away, add/commit, then restore
       has_claude=true
+
       mv "$claude_file" "$git_claude_file" || {
         echo "❌ Failed to move CLAUDE.md into .git"
         return 1
       }
+
       git add -A || {
         mv "$git_claude_file" "$claude_file"
         return 1
       }
+
       git commit -S -m "$TEMP_GIT_COMMIT_MESSAGE" || {
         mv "$git_claude_file" "$claude_file"
         return 1
       }
+
       mv "$git_claude_file" "$claude_file"
     fi
   else
@@ -93,7 +127,7 @@ gita() {
   fi
 
   # -----------------------------
-  # check push flag then push
+  # Check push flag then push
   # -----------------------------
   if [[ "$TEMP_GIT_PUSH_ENABLED" == true ]]; then
     git push || return 1
@@ -131,3 +165,5 @@ gitconfig() {
 
 # copy git branch name
 alias gitb='printf "%s" "$(git branch --show-current)" | xclip -selection clipboard'
+alias gits='git status --short --untracked-files=all'
+
