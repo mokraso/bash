@@ -9,6 +9,10 @@ alias yank='tr -d "\n" | xclip -selection clipboard'
 # play music
 alias lmp3='cvlc --random --extraintf rc --rc-fake-tty $d/lai-2-temp/*.mp3'
 
+calc() {
+    python3 -c "print($*)"
+}
+
 lssm() {
   # default index = 1 (zsh arrays are 1-indexed)
   local index="${1:-1}"
