@@ -9,6 +9,9 @@ alias yank='tr -d "\n" | xclip -selection clipboard'
 # play music
 alias lmp3='cvlc --random --extraintf rc --rc-fake-tty $d/lai-2-temp/*.mp3'
 
+# enter to custom ubuntu
+alias cu='$d/mokraso-bash/custom-ubuntu/start.sh'
+
 calc() {
     python3 -c "print($*)"
 }
