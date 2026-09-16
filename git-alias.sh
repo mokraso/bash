@@ -15,70 +15,23 @@ gitp() {
   git pull origin "$branch"
 }
 
-# git merge request for main/staging MR
-git_mr_urls() {
-  local branch
-  local remote_url
-  local project_url
-  local encoded_branch
-  local main_mr_url
-  local staging_mr_url
-
-  branch=$(git branch --show-current)
-
-  if [[ -z "$branch" ]]; then
-    return 0
-  fi
-
-  remote_url=$(git remote get-url origin 2>/dev/null)
-
-  if [[ -z "$remote_url" ]]; then
-    return 0
-  fi
-
-  # Convert GitLab SSH URL:
-  # git@gitlab.com:group/project.git
-  # ->
-  # https://gitlab.com/group/project
-  if [[ "$remote_url" =~ ^git@([^:]+):(.+)$ ]]; then
-    project_url="https://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
-  else
-    project_url="$remote_url"
-  fi
-
-  # Remove .git
-  project_url="${project_url%.git}"
-
-  # URL encode branch
-  encoded_branch=$(python3 -c \
-    'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' \
-    "$branch"
-  )
-
-  # MR -> main
-  main_mr_url="${project_url}/-/merge_requests/new?merge_request[source_branch]=${encoded_branch}"
-
-  # MR -> staging
-  staging_mr_url="${main_mr_url}&merge_request[target_branch]=staging"
-
-  echo
-  echo "🔀 Merge Request:"
-  echo "   main:    $main_mr_url"
-  echo "   staging: $staging_mr_url"
-}
-
-# ==============================
-# gita function
-# ==============================
-
-# gita: add, commit, push with commit message
-# check if CLAUDE.md file existed, then copy to .git folder
-# after commit message, restore CLAUDE.md file
 
 gita() {
   local message="$1"
   local push_flag="$2"
   local has_claude=false
+
+  # -----------------------------
+  # Prevent push to staging
+  # -----------------------------
+  local current_branch
+  current_branch=$(git branch --show-current)
+
+  if [[ "$current_branch" == "staging" && "$push_flag" != "0" ]]; then
+    echo "❌ Push to 'staging' branch is not allowed"
+    echo "   Use a feature branch and create a Merge Request instead."
+    return 1
+  fi
 
   # -----------------------------
   # Find git root directory
@@ -182,33 +135,7 @@ gita() {
   # Check push flag then push
   # -----------------------------
   if [[ "$TEMP_GIT_PUSH_ENABLED" == true ]]; then
-
-    local push_output_file
-    local push_status
-
-    push_output_file=$(mktemp)
-
-    # Print original git push output in real-time
-    # and save it for later processing
-    git push 2>&1 | tee "$push_output_file"
-
-    push_status=${PIPESTATUS[0]}
-
-    # Read the original output
-    local push_output
-    push_output=$(cat "$push_output_file")
-
-    # Cleanup
-    rm -f "$push_output_file"
-
-    # Keep original git push error behavior
-    if (( push_status != 0 )); then
-      return "$push_status"
-    fi
-
-    # Generate Merge Request URLs
-    git_mr_urls "$push_output"
-
+    git push || return 1
   else
     echo "⚠️  git push skipped (TEMP_GIT_PUSH_ENABLED=false)"
   fi
