@@ -87,6 +87,9 @@ gita() {
     echo -e "\033[1;31mIf this large commit is intentional, run manually:\033[0m"
     echo
     echo "git add -A"
+    if [[ -f "$claude_file" && ! -f "$git_root/.git/allow-claude.log" ]]; then
+      echo "git reset CLAUDE.md"
+    fi
     echo "git commit -m \"$TEMP_GIT_COMMIT_MESSAGE\""
     echo "git push"
     echo
