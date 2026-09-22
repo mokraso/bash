@@ -13,7 +13,7 @@ alias lmp3='cvlc --random --extraintf rc --rc-fake-tty $d/lai-2-temp/*.mp3'
 alias cu='$d/mokraso-bash/custom-ubuntu/start.sh'
 
 calc() {
-    python3 -c "print($*)"
+    python3 -c "print(f'{($*):,}')"
 }
 
 lssm() {
