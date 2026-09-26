@@ -38,7 +38,7 @@ def gen_with_clickhouse(tables: list[str]) -> str:
             f"SELECT {idx} AS ord, "
             f"'{table_name}' AS table_name, "
             f"count(1) AS cnt "
-            f"FROM {table_name}"
+            f"FROM `{table_name}`"
         )
 
     return "\nUNION ALL\n".join(queries)
