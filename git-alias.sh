@@ -175,3 +175,44 @@ gitconfig() {
 alias gitb='printf "%s" "$(git branch --show-current)" | xclip -selection clipboard'
 alias gits='git status --short --untracked-files=all'
 
+gitc() {
+    case "$1" in
+        0)
+            git checkout main &&
+            git pull origin main
+            ;;
+
+        1)
+            git checkout staging &&
+            git pull origin staging
+            ;;
+
+        -b)
+            if [ -z "$2" ]; then
+                echo "Usage: gitc -b <branch-name>"
+                return 1
+            fi
+
+            git checkout -b "$2"
+            ;;
+
+        -)
+            git checkout -
+            ;;
+
+        "")
+            echo "Usage:"
+            echo "  gitc 0                  # checkout main + pull"
+            echo "  gitc 1                  # checkout staging + pull"
+            echo "  gitc <branch>            # checkout existing branch"
+            echo "  gitc -b <branch>         # create + checkout branch"
+            echo "  gitc -                   # checkout previous branch"
+            return 1
+            ;;
+
+        *)
+            # Treat parameter as an existing branch name
+            git checkout "$1"
+            ;;
+    esac
+}
