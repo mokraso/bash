@@ -18,7 +18,9 @@ gitp() {
 
 gita() {
   local message="$1"
-  local push_flag="$2"
+  local push_flag="${2:-1}" # default allow push
+  # local push_flag="$2"
+
   local has_claude=false
 
   # -----------------------------
