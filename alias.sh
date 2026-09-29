@@ -84,17 +84,29 @@ sql1 () {
 }
 
 epoch () {
-    local ts=$1
+    local input_ts=$1
+    local ts
+    local ts_ms
 
-    if [ -z "$ts" ]; then
-        echo "Usage: epoch <timestamp>"
-        return 1
+    # Không truyền timestamp -> lấy thời gian hiện tại
+    if [ -z "$input_ts" ]; then
+        ts=$(date +%s)
+        ts_ms=$(date +%s%3N)
+    else
+        # Nếu >= 13 digits -> milliseconds
+        if [ ${#input_ts} -ge 13 ]; then
+            ts_ms=$input_ts
+            ts=${input_ts:0:10}
+        else
+            ts=$input_ts
+            ts_ms=$((ts * 1000))
+        fi
     fi
-
-    ts=${ts:0:10}
 
     echo "UTC   : $(date -u -d @"$ts" "+%Y-%m-%d %H:%M:%S")"
     echo "UTC+7 : $(TZ=Asia/Ho_Chi_Minh date -d @"$ts" "+%Y-%m-%d %H:%M:%S")"
+    echo "Epoch : $ts"
+    echo "Epoch ms: $ts_ms"
 }
 
 pyac () {
