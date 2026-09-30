@@ -77,7 +77,9 @@ gcof() {
     _fzf_require fzf git || return
 
     # Make sure we are inside a Git repository.
-    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+    local repo_root
+
+    repo_root=$(git rev-parse --show-toplevel) || {
         echo "gcof: not inside a Git repository" >&2
         return 1
     }
@@ -85,32 +87,50 @@ gcof() {
     local branch
 
     branch=$(
-        git branch \
+        git -C "$repo_root" branch \
             --all \
             --format='%(refname:short)' |
-        sed 's#^origin/##' |
-        sort -u |
+        grep -v '^HEAD -> ' |
         fzf \
             --prompt='Branch > ' \
-            --preview='git log --oneline --decorate --graph "origin/{}" 2>/dev/null || git log --oneline --decorate --graph "{}" 2>/dev/null'
+            --preview="
+                git -C '$repo_root' log \
+                    --oneline \
+                    --decorate \
+                    --graph \
+                    --color=always \
+                    '{}' 2>&1
+            " \
+            --preview-window='right:60%' \
+            --bind='alt-j:preview-down' \
+            --bind='alt-k:preview-up' \
+            --bind='ctrl-/:toggle-preview'
     ) || return 0
 
     [[ -z "$branch" ]] && return 0
 
-    # Prefer local branch if it exists.
-    if git show-ref --verify --quiet "refs/heads/$branch"; then
+    # Local branch
+    if git -C "$repo_root" show-ref --verify --quiet "refs/heads/$branch"; then
         git switch -- "$branch"
-    else
-        # Try to create a local branch from origin/<branch>.
-        if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-            git switch --track "origin/$branch"
-        else
-            echo "gcof: branch not found: $branch" >&2
-            return 1
-        fi
+        return
     fi
-}
 
+    # Remote branch
+    if [[ "$branch" == origin/* ]]; then
+        local local_branch="${branch#origin/}"
+
+        if git -C "$repo_root" show-ref --verify --quiet "refs/heads/$local_branch"; then
+            git switch -- "$local_branch"
+        else
+            git switch --track "$branch"
+        fi
+
+        return
+    fi
+
+    echo "gcof: branch not found: $branch" >&2
+    return 1
+}
 
 # ============================================================
 # glogf - Browse Git commits with diff preview
@@ -134,13 +154,25 @@ glogf() {
         fzf \
             --prompt='Commit > ' \
             --delimiter=$'\t' \
-            --with-shell=bash \
             --preview='
                 commit=$(printf "%s" {} | cut -f1)
-                git show --color=always --stat "$commit"
+
+                git show \
+                    --color=always \
+                    --stat \
+                    "$commit"
+
                 printf "\n"
-                git show --color=always --format=fuller "$commit"
-            ' |
+
+                git show \
+                    --color=always \
+                    --format=fuller \
+                    "$commit"
+            ' \
+            --preview-window='right:65%' \
+            --bind='alt-j:preview-down' \
+            --bind='alt-k:preview-up' \
+            --bind='ctrl-/:toggle-preview' |
         cut -f1
     ) || return 0
 
@@ -148,7 +180,6 @@ glogf() {
 
     git show "$commit"
 }
-
 
 # ============================================================
 # dlogs - Select a Docker container and follow its logs
