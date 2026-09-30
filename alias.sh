@@ -103,9 +103,9 @@ epoch () {
         fi
     fi
 
-    echo "UTC   : $(date -u -d @"$ts" "+%Y-%m-%d %H:%M:%S")"
-    echo "UTC+7 : $(TZ=Asia/Ho_Chi_Minh date -d @"$ts" "+%Y-%m-%d %H:%M:%S")"
-    echo "Epoch : $ts"
+    echo "UTC     : $(date -u -d @"$ts" "+%Y-%m-%d %H:%M:%S")"
+    echo "UTC+7   : $(TZ=Asia/Ho_Chi_Minh date -d @"$ts" "+%Y-%m-%d %H:%M:%S")"
+    echo "Epoch   : $ts"
     echo "Epoch ms: $ts_ms"
 }
 
