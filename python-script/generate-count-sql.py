@@ -24,8 +24,10 @@ def gen_with_s3(paths: list[str]) -> str:
 
     return "\nUNION ALL\n".join(queries)
 
-
 def gen_with_clickhouse(tables: list[str]) -> str:
+    def quote_clickhouse_identifier(name: str) -> str:
+        return f"`{name.replace('.', '`.`')}`"
+
     queries = []
 
     for idx, table_name in enumerate(tables):
@@ -34,15 +36,16 @@ def gen_with_clickhouse(tables: list[str]) -> str:
         if not table_name:
             continue
 
+        from_table = quote_clickhouse_identifier(table_name)
+
         queries.append(
             f"SELECT {idx} AS ord, "
             f"'{table_name}' AS table_name, "
             f"count(1) AS cnt "
-            f"FROM `{table_name}`"
+            f"FROM {from_table}"
         )
 
     return "\nUNION ALL\n".join(queries)
-
 
 def generate_sql(inputs: list[str]) -> str:
     """

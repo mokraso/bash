@@ -175,7 +175,16 @@ gitconfig() {
 
 # copy git branch name
 alias gitb='printf "%s" "$(git branch --show-current)" | xclip -selection clipboard'
-alias gits='git status --short --untracked-files=all'
+
+gits() {
+    git status --short --untracked-files=all
+
+    echo
+    printf "Changed: %s | Added: %s | Deleted: %s\n" \
+        "$(git diff --name-only | wc -l)" \
+        "$(git ls-files --others --exclude-standard | wc -l)" \
+        "$(git diff --name-only --diff-filter=D | wc -l)"
+}
 
 gitc() {
     case "$1" in

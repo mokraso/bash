@@ -160,6 +160,7 @@ glogf() {
                 git show \
                     --color=always \
                     --stat \
+                    -m --first-parent \
                     "$commit"
 
                 printf "\n"
@@ -167,6 +168,7 @@ glogf() {
                 git show \
                     --color=always \
                     --format=fuller \
+                    -m --first-parent \
                     "$commit"
             ' \
             --preview-window='right:65%' \
@@ -178,7 +180,7 @@ glogf() {
 
     [[ -z "$commit" ]] && return 0
 
-    git show "$commit"
+    git show -m --first-parent "$commit"
 }
 
 # ============================================================
