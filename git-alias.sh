@@ -229,8 +229,9 @@ gitc() {
 }
 
 # gitd: git diff with line numbers, red/green line bg, highlighted changed words
-gitd() {
-  git -c color.ui=never diff "$@" | python3 <(cat <<'PY'
+# _gitd_py: print the python renderer (shared by gitd and glogfile)
+_gitd_py() {
+  cat <<'PY'
 import difflib
 import re
 import sys
@@ -329,5 +330,8 @@ try:
 except BrokenPipeError:
     pass
 PY
-  ) | less -RFX
+}
+
+gitd() {
+  git -c color.ui=never diff "$@" | python3 <(_gitd_py) | less -RFX
 }

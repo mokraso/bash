@@ -184,6 +184,82 @@ glogf() {
 }
 
 # ============================================================
+# glogfile - Browse the history of a single file (follows renames)
+# Usage: glogfile [file]   (no argument: pick a tracked file with fzf)
+# Keys : enter = show commit patch for the file, ctrl-y = copy hash
+# ============================================================
+glogfile() {
+    _fzf_require fzf git || return
+
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+        echo "glogfile: not inside a Git repository" >&2
+        return 1
+    }
+
+    local file="$1"
+
+    if [[ -z "$file" ]]; then
+        file=$(
+            git ls-files |
+            fzf \
+                --prompt='File > ' \
+                --preview='
+                    git log -5 --color=always \
+                        --pretty=format:"%C(yellow)%h%Creset %C(green)%ad%Creset %s" \
+                        --date=short -- {}
+                '
+        ) || return 0
+
+        [[ -z "$file" ]] && return 0
+    fi
+
+    git log --follow --max-count=1 --format=%h -- "$file" 2>/dev/null |
+        grep -q . || {
+        echo "glogfile: no history for: $file" >&2
+        return 1
+    }
+
+    # Same renderer as gitd (defined in git-alias.sh); fall back to plain git colors.
+    local render="cat" renderer=""
+    if typeset -f _gitd_py >/dev/null 2>&1; then
+        renderer=$(mktemp) || return 1
+        _gitd_py > "$renderer"
+        render="python3 $renderer"
+    fi
+
+    local commit
+
+    commit=$(
+        git log --follow \
+            --pretty=format:'%h%x09%an%x09%ad%x09%s' \
+            --date=format:'%Y-%m-%d %H:%M' -- "$file" |
+        fzf \
+            --prompt="$file > " \
+            --delimiter=$'\t' \
+            --preview='
+                commit=$(printf "%s" {} | cut -f1)
+
+                {
+                    git -c color.ui=never log --follow -p -1 --format=fuller "$commit" -- '"'$file'"'
+                } | '"$render"'
+            ' \
+            --preview-window='right:65%' \
+            --bind='alt-j:preview-down' \
+            --bind='alt-k:preview-up' \
+            --bind='ctrl-/:toggle-preview' \
+            --bind='ctrl-y:execute-silent(printf "%s" {1} | xclip -selection clipboard)' |
+        cut -f1
+    ) || { rm -f "$renderer"; return 0; }
+
+    [[ -z "$commit" ]] && { rm -f "$renderer"; return 0; }
+
+    git -c color.ui=never log --follow -p -1 --format=fuller "$commit" -- "$file" |
+        eval "$render" | less -RFX
+
+    rm -f "$renderer"
+}
+
+# ============================================================
 # dlogs - Select a Docker container and follow its logs
 # ============================================================
 dlogs() {
