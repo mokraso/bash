@@ -61,28 +61,6 @@ snip() {
   disown
 }
 
-sql1 () {
-  local ts output_file
-  ts=$(date +"%Y%m%d_%H%M%S")
-  output_file="/tmp/result_sql_count_${ts}.sql"
-
-  awk '
-    NF {
-      gsub(/^[ \t]+|[ \t]+$/, "", $0)
-      if ($0 != "") {
-        printf "select '\''%s'\'' table_name, count(1) from %s union all\n", $0, $0
-      }
-    }
-  ' > "$output_file"
-
-  # bỏ union all cuối cùng
-  sed -i '$ s/ union all$//' "$output_file"
-
-  cat "$output_file"
-  echo
-  echo "cat $output_file"
-}
-
 epoch () {
     local input_ts=$1
     local ts
