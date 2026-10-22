@@ -227,3 +227,107 @@ gitc() {
             ;;
     esac
 }
+
+# gitd: git diff with line numbers, red/green line bg, highlighted changed words
+gitd() {
+  git -c color.ui=never diff "$@" | python3 <(cat <<'PY'
+import difflib
+import re
+import sys
+
+RESET = "\033[0m"
+DEL = "\033[48;5;52m"       # removed line bg
+DEL_HI = "\033[48;5;124m"   # removed word bg
+ADD = "\033[48;5;22m"       # added line bg
+ADD_HI = "\033[48;5;28m"    # added word bg
+HUNK = "\033[48;5;238;36m"  # hunk header
+FILE = "\033[1;33m"
+DIM = "\033[90m"
+EL = "\033[K"               # fill the rest of the line with current bg
+
+TOKEN = re.compile(r"\w+|\s+|[^\w\s]")
+HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)")
+
+
+def num(n):
+    return f"{n:>5}" if n is not None else "     "
+
+
+def render(sign, text, base, hi, spans, o, n):
+    out, pos = [], 0
+    for a, b in spans:
+        out.append(text[pos:a] + hi + text[a:b] + base)
+        pos = b
+    out.append(text[pos:])
+    gutter = f"{DIM}{num(o)} {num(n)} {RESET}"
+    return f"{gutter}{base}{sign} {''.join(out)}{EL}{RESET}"
+
+
+def word_spans(old, new):
+    a, b = TOKEN.findall(old), TOKEN.findall(new)
+    sm = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    so, sn = [], []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        if i2 > i1:
+            so.append((len("".join(a[:i1])), len("".join(a[:i2]))))
+        if j2 > j1:
+            sn.append((len("".join(b[:j1])), len("".join(b[:j2]))))
+    return so, sn
+
+
+def flush(dels, adds, o, n, out):
+    paired = min(len(dels), len(adds))
+    spans_d = [[] for _ in dels]
+    spans_a = [[] for _ in adds]
+    for k in range(paired):
+        spans_d[k], spans_a[k] = word_spans(dels[k], adds[k])
+    for k, t in enumerate(dels):
+        out.append(render("-", t, DEL, DEL_HI, spans_d[k], o + k, None))
+    for k, t in enumerate(adds):
+        out.append(render("+", t, ADD, ADD_HI, spans_a[k], None, n + k))
+    return o + len(dels), n + len(adds)
+
+
+def main():
+    out, dels, adds = [], [], []
+    o = n = 0
+    in_hunk = False
+    for line in sys.stdin.read().split("\n"):
+        if line.endswith("\r"):
+            line = line[:-1]
+        if in_hunk and line[:1] in ("-", "+"):
+            (dels if line[0] == "-" else adds).append(line[1:])
+            continue
+        if dels or adds:
+            o, n = flush(dels, adds, o, n, out)
+            dels, adds = [], []
+        m = HUNK_RE.match(line)
+        if m:
+            o, n, in_hunk = int(m[1]), int(m[2]), True
+            out.append(f"{HUNK}{line}{EL}{RESET}")
+        elif in_hunk and line.startswith(" "):
+            out.append(f"{DIM}{num(o)} {num(n)} {RESET}  {line[1:]}")
+            o, n = o + 1, n + 1
+        elif line.startswith("diff --git"):
+            in_hunk = False
+            out.append(f"{FILE}{line}{RESET}")
+        elif line.startswith(("--- ", "+++ ", "index ", "new file", "deleted file", "similarity", "rename")):
+            out.append(f"{DIM}{line}{RESET}")
+        elif line.startswith("\\"):
+            out.append(f"{DIM}{line}{RESET}")
+        else:
+            out.append(line)
+    if dels or adds:
+        flush(dels, adds, o, n, out)
+    sys.stdout.write("\n".join(out).rstrip("\n") + "\n")
+
+
+try:
+    main()
+except BrokenPipeError:
+    pass
+PY
+  ) | less -RFX
+}
