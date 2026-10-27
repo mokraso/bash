@@ -147,7 +147,7 @@ gita() {
 }
 
 gitconfig() {
-  NAMES=("Đặng Quốc Lai (VSF-DL-NTDL)" "lai-2")
+  NAMES=("Đặng Quốc Lai (VSF-KDL&AI-SPDL&AI)" "lai-2")
   EMAILS=("v.laidq@vinsmartfuture.tech" "laidq@outlook.com")
   GPGKEYS=("7C16AFE6C3BF3FBB" "33EADC8DEDE48179")
   COMMENTS=("git@gitlab.vinsmartfuture.tech:vsf-qtvhbds/ai-platform/" "PAT token")
@@ -177,13 +177,26 @@ gitconfig() {
 alias gitb='printf "%s" "$(git branch --show-current)" | xclip -selection clipboard'
 
 gits() {
-    git status --short --untracked-files=all
+    # One letter per file (M/A/D), relative to HEAD, regardless of staging.
+    # Untracked files count as A.
+    local list
+    list=$({
+        git diff HEAD --name-status --no-renames
+        git ls-files --others --exclude-standard | sed 's/^/A\t/'
+    } | sort -k2)
+
+    # M yellow, A green, D red
+    printf "%s\n" "$list" | sed '/^$/d' | awk -F'\t' '
+        $1 == "M" { c = "\033[33m" }
+        $1 == "A" { c = "\033[32m" }
+        $1 == "D" { c = "\033[31m" }
+        { printf "%s%s %s\033[0m\n", c, $1, $2 }'
 
     echo
     printf "Changed: %s | Added: %s | Deleted: %s\n" \
-        "$(git diff --name-only | wc -l)" \
-        "$(git ls-files --others --exclude-standard | wc -l)" \
-        "$(git diff --name-only --diff-filter=D | wc -l)"
+        "$(printf "%s\n" "$list" | grep -c '^M')" \
+        "$(printf "%s\n" "$list" | grep -c '^A')" \
+        "$(printf "%s\n" "$list" | grep -c '^D')"
 }
 
 gitc() {
