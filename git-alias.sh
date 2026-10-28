@@ -348,3 +348,54 @@ PY
 gitd() {
   git -c color.ui=never diff "$@" | python3 <(_gitd_py) | less -RFX
 }
+
+# gitmr [0|1]: print a ctrl+click link to the "new merge request" page
+# (source = current branch, target = default branch, or staging if arg is 1)
+gitmr() {
+  local mode="${1:-0}" url branch target base host repo_path
+
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [[ -z "$branch" ]]; then
+    echo "❌ Not a git repository"
+    return 1
+  fi
+
+  url=$(git remote get-url origin 2>/dev/null || git remote -v | awk 'NR==1{print $2}')
+  if [[ -z "$url" ]]; then
+    echo "❌ No remote found (git remote -v)"
+    return 1
+  fi
+
+  # normalize ssh/https remote (port 22 or 443, scp-like or url) -> host + repo_path
+  url="${url%.git}"
+  case "$url" in
+    *://*) url="${url#*://}"; url="${url#*@}"
+           host="${url%%/*}"; repo_path="${url#*/}"; host="${host%%:*}" ;;
+    *@*:*) host="${url#*@}"; host="${host%%:*}"; repo_path="${url#*:}" ;;
+    *) echo "❌ Unsupported remote: $url"; return 1 ;;
+  esac
+  repo_path="${repo_path#/}"
+  # ssh-over-443 hosts -> web hosts
+  host="${host#ssh.}"; host="${host#altssh.}"
+  base="https://$host/$repo_path"
+
+  if [[ "$mode" == "1" ]]; then
+    target="staging"
+  else
+    target=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)
+    target="${target#origin/}"
+    [[ -z "$target" ]] && target="main"
+  fi
+
+  if [[ "$branch" == "$target" ]]; then
+    echo "❌ Current branch is already '$target'"
+    return 1
+  fi
+
+  local src="${branch//\//%2F}" dst="${target//\//%2F}"
+  if [[ "$host" == *github* ]]; then
+    echo "${base}/compare/${dst}...${src}?expand=1"
+  else
+    echo "${base}/-/merge_requests/new?merge_request%5Bsource_branch%5D=${src}&merge_request%5Btarget_branch%5D=${dst}"
+  fi
+}

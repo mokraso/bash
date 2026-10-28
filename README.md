@@ -39,6 +39,7 @@ source ~/.local/data/mokraso-bash/fzf-alias.sh
 | `gits` | Status ngắn + thống kê changed/added/deleted | - |
 | `gitc <0\|1\|-\|-b name\|branch>` | `0` main + pull, `1` staging + pull, `-` branch trước, `-b <name>` tạo branch mới, `<branch>` checkout | không param = in hướng dẫn |
 | `gitd [args]` | `git diff` hiển thị 2 dòng cũ/mới, nền đỏ/xanh, tô đậm từ thay đổi, có số dòng | nhận mọi tham số của `git diff` (`--staged`, `<file>`...) |
+| `gitmr [0\|1]` | In link (ctrl+click) mở trang tạo merge request từ branch hiện tại, đọc từ `git remote -v` | `0` (mặc định): target là branch mặc định (main); `1`: target là `staging` |
 
 ## fzf-alias.sh
 
