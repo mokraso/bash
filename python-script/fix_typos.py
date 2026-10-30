@@ -40,16 +40,19 @@ LUỒNG XỬ LÝ (2 lượt, làm hết lượt 1 rồi mới sang lượt 2):
           dòng đó. Nếu từ/cụm nằm ở ĐẦU dòng thì in thêm dòng NGAY TRƯỚC đó;
           nếu nằm ở CUỐI dòng thì in thêm dòng NGAY SAU đó -> để có đủ ngữ
           cảnh câu (vì câu có thể bị ngắt giữa 2 dòng do OCR).
-        - Hỏi người dùng muốn làm gì với chỗ khớp đó (xem đầy đủ các lựa chọn
-          trong biến HELP_TEXT bên dưới, hoặc gõ '$help' khi script đang chạy):
-          nhập từ/cụm thay thế, 'y', 'n', 'cũ:mới', 'note:...', '$skip',
-          '$skip:cụm', '$global cũ:mới', '$list', '$quit', '$help'.
+        - Hỏi người dùng muốn làm gì với chỗ khớp đó (xem đầy đủ trong biến
+          HELP_TEXT bên dưới, hoặc gõ '$help' khi script đang chạy). 'y' và
+          'n' gõ TRẦN như cũ (không có "$"); mọi action khác theo cú pháp
+          "$<action> [params]": $fix cũ:mới, $note ..., $skip, $skip cụm,
+          $global cũ:mới (viết tắt $g), $list, $quit, $help. Gõ trực tiếp
+          từ/cụm khác (không có "$", không phải 'y'/'n') tương đương
+          "$replace <từ/cụm>" - tức thay thế ngay bằng đúng những gì vừa gõ.
         - Tiêu đề mỗi chỗ khớp có "(còn N từ/cụm nữa trong hàng chờ)" để biết
           tiến độ xử lý tổng (lượt 1 + lượt 2) còn lại bao nhiêu.
 
-    '$skip:cụm' (khác với '$skip' đứng một mình): dùng khi từ đang tìm chỉ là
+    '$skip cụm' (khác với '$skip' đứng một mình): dùng khi từ đang tìm chỉ là
     MỘT PHẦN của 1 cụm/từ ghép ĐÚNG chính tả (vd đang tìm 'định', gặp 'nhất
-    định' vốn không sai) -> gõ "$skip: nhất định" để từ nay (cả trong lượt
+    định' vốn không sai) -> gõ "$skip nhất định" để từ nay (cả trong lượt
     chạy này lẫn các lần chạy sau) bỏ qua, không hỏi lại mỗi khi 'định' nằm
     trong cụm 'nhất định' nữa. Danh sách (key = từ đang tìm, value = cụm cần
     bỏ qua) được lưu vào 1 file riêng (giống file pending), mặc định
@@ -61,8 +64,9 @@ LUỒNG XỬ LÝ (2 lượt, làm hết lượt 1 rồi mới sang lượt 2):
     wordlist. Ví dụ: "$global y định:ý định".
 
     Sau khi xử lý xong (hoặc dừng giữa chừng bằng Ctrl+C / '$quit'), ghi đè
-    file markdown (có backup .bak ở lần ghi đầu), ghi file pending nếu có từ
-    note: nào được thêm, và ghi file ignore nếu có '$skip:cụm' nào được thêm.
+    file markdown (có backup .bak ở lần ghi đầu), ghi file pending nếu có
+    '$note' nào được thêm, và ghi file ignore nếu có '$skip cụm' nào được
+    thêm.
 """
 
 import argparse
@@ -204,27 +208,34 @@ def append_ignore(path: Path, key: str, phrase: str):
 
 
 HELP_TEXT = """\
-Các lựa chọn có thể nhập tại dấu nhắc:
-  <từ/cụm>      thay thế TẤT CẢ chỗ khớp của từ/cụm đang tìm TRONG DÒNG này
-                (được nhớ lại làm "gần nhất" để dùng với 'y')
-  y             dùng lại y nguyên từ thay thế gần nhất (cho từ/cụm đang tìm)
-  n             bỏ qua (next), sang chỗ khớp kế tiếp
-  cũ:mới        sửa 1 đoạn KHÁC bất kỳ trong CÙNG dòng này, vd: "ngan bo: ngắn bỏ"
-  note:a, b     thêm a, b (tự trim khoảng trắng) vào danh sách chờ cho lần
-                chạy sau; chỗ khớp hiện tại vẫn được hỏi lại, không bị bỏ qua
-  note:a:x      thêm "a" vào danh sách chờ, ĐỒNG THỜI thay "a"->"x" ngay
-                trong DÒNG hiện tại (không ảnh hưởng dòng khác). Có thể trộn
-                chung với kiểu trên: "note:a:x, b" (b chỉ note, không thay)
-  $skip         bỏ qua HOÀN TOÀN từ/cụm đang tìm (mọi chỗ khớp còn lại),
-                loại khỏi hàng chờ, qua từ/cụm kế tiếp
-  $skip:cụm     cụm đang tìm nằm trong 1 từ ghép ĐÚNG (vd tìm 'định' gặp
-                'nhất định') -> từ nay bỏ qua, không hỏi lại mỗi khi gặp cụm
-                này nữa (lưu vào file ignore, áp dụng cả các lần chạy sau)
-  $global cũ:mới  thay TOÀN BỘ "cũ" -> "mới" trong CẢ FILE ngay, không chỉ
-                dòng/từ đang xét, vd: "$global y định:ý định"
-  $list         xem danh sách các từ/cụm còn lại trong hàng chờ (sau từ này)
-  $quit         lưu lại tiến trình và thoát chương trình ngay
-  $help         hiện lại bảng hướng dẫn này\
+CÚ PHÁP cho mọi action KHÁC 'y'/'n':  $<action> [params]
+Riêng 'y' và 'n' gõ TRẦN, không có dấu "$". Gõ trực tiếp từ/cụm khác (không
+có "$", không phải 'y'/'n') == "$replace <từ/cụm>".
+
+  <từ/cụm>          == $replace <từ/cụm>: thay TẤT CẢ chỗ khớp của từ/cụm
+                      đang tìm TRONG DÒNG này; được nhớ lại làm "gần nhất"
+                      để dùng với 'y'
+  y                 dùng lại y nguyên từ thay thế gần nhất (cho từ/cụm đang tìm)
+  n                 bỏ qua (next), sang chỗ khớp kế tiếp (Enter trống = 'n')
+  $fix cũ:mới       sửa 1 đoạn KHÁC bất kỳ trong CÙNG dòng này, vd:
+                    "$fix ngan bo:ngắn bỏ"
+  $note a, b        thêm a, b (tự trim khoảng trắng) vào danh sách chờ cho
+                    lần chạy sau; chỗ khớp hiện tại vẫn được hỏi lại
+  $note a:x         thêm "a" vào danh sách chờ, ĐỒNG THỜI thay "a"->"x" ngay
+                    trong DÒNG hiện tại. Có thể trộn: "$note a:x, b" (b chỉ
+                    note, không thay)
+  $skip             bỏ qua HOÀN TOÀN từ/cụm đang tìm (mọi chỗ khớp còn lại),
+                    loại khỏi hàng chờ, qua từ/cụm kế tiếp
+  $skip cụm         từ/cụm đang tìm nằm trong 1 từ ghép ĐÚNG (vd tìm 'định'
+                    gặp 'nhất định') -> từ nay bỏ qua, không hỏi lại mỗi khi
+                    gặp cụm này nữa (lưu vào file ignore, áp dụng cả các lần
+                    chạy sau)
+  $global cũ:mới    (viết tắt: $g cũ:mới) thay TOÀN BỘ "cũ" -> "mới" trong
+                    CẢ FILE ngay, không chỉ dòng/từ đang xét, vd:
+                    "$g y định:ý định"
+  $list             xem danh sách các từ/cụm còn lại trong hàng chờ
+  $quit             lưu lại tiến trình và thoát chương trình ngay
+  $help             hiện lại bảng hướng dẫn này\
 """
 
 
@@ -280,17 +291,35 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
         if is_at_line_end(line, last_m.end()) and idx < len(lines) - 1:
             print("  (dòng/câu phía sau):", colorize(lines[idx + 1], COLOR_CTX, use_color))
 
-        prompt = "Nhập thay thế / 'y' / 'n' / 'cũ:mới' / 'note:' / $help: "
+        prompt = "Nhập thay thế / 'y' / 'n', hoặc $action (gõ $help): "
         try:
             user_input = input(prompt).strip()
         except EOFError:
             user_input = "n"
 
-        if user_input.lower() == "$help":
+        # ---- Cú pháp cho mọi action khác (ngoại trừ 'y'/'n'): "$<action> [params]".
+        # Riêng 'y' và 'n' vẫn gõ TRẦN không có dấu "$" (y: dùng lại thay thế
+        # gần nhất; n hoặc Enter trống: bỏ qua). Gõ trực tiếp từ/cụm khác
+        # (không có "$", không phải 'y'/'n') == "$replace <text>".
+        if user_input == "" or user_input.lower() == "n":
+            action, param = "n", ""
+        elif user_input.lower() == "y":
+            action, param = "y", ""
+        elif user_input.startswith("$"):
+            head, _, rest = user_input[1:].partition(" ")
+            action = head.lower()
+            param = rest.strip()
+            if action == "g":
+                action = "global"
+        else:
+            action = "replace"
+            param = user_input
+
+        if action == "help":
             print("\n" + HELP_TEXT)
             continue  # hỏi lại đúng chỗ khớp này
 
-        if user_input.lower() == "$list":
+        if action == "list":
             if remaining_terms:
                 print(f"\nCòn {len(remaining_terms)} từ/cụm trong hàng chờ:")
                 for j, t in enumerate(remaining_terms, 1):
@@ -299,19 +328,17 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
                 print("\nKhông còn từ/cụm nào khác trong hàng chờ.")
             continue  # hỏi lại đúng chỗ khớp này
 
-        if user_input.lower() == "$quit":
+        if action == "quit":
             print("-> Thoát chương trình theo yêu cầu. Đang lưu lại tiến trình đã làm...")
             raise QuitProgram()
 
-        if user_input.lower() == "$skip":
-            print(f"-> Bỏ qua HOÀN TOÀN '{term}', loại khỏi hàng chờ.")
-            raise SkipTerm()
-
-        if user_input.lower().startswith("$skip:"):
-            # "$skip: nhất định" -> `term` (vd 'định') nằm trong 1 cụm đúng
+        if action == "skip":
+            if not param:
+                print(f"-> Bỏ qua HOÀN TOÀN '{term}', loại khỏi hàng chờ.")
+                raise SkipTerm()
+            # "$skip nhất định" -> `term` (vd 'định') nằm trong 1 cụm đúng
             # chính tả -> từ nay bỏ qua cụm này, không hỏi lại nữa (lưu file).
-            raw = user_input.split(":", 1)[1]
-            skip_phrases = [t.strip() for t in raw.split(",") if t.strip()]
+            skip_phrases = [t.strip() for t in param.split(",") if t.strip()]
             for sp in skip_phrases:
                 if ignore_path is not None:
                     append_ignore(ignore_path, term, sp)
@@ -324,18 +351,17 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
                 print(f"-> Từ nay bỏ qua '{term}' trong: {', '.join(skip_phrases)}")
             continue  # không tăng idx -> vòng lặp tự lọc lại, bỏ chỗ vừa thêm
 
-        if user_input.lower().startswith("$global "):
+        if action == "global":
             # "$global đoạn_cũ:đoạn_mới" -> thay TOÀN BỘ file, không chỉ dòng
             # hay từ/cụm đang xét. Ví dụ: "$global y định:ý định".
-            rest = user_input[len("$global"):].strip()
-            if ":" not in rest:
-                print("-> Cú pháp không hợp lệ, cần dạng '$global đoạn_cũ:đoạn_mới'.")
+            if ":" not in param:
+                print("-> Cú pháp không hợp lệ, cần dạng '$global cũ:mới'.")
                 continue
-            g_old, g_new = rest.split(":", 1)
+            g_old, g_new = param.split(":", 1)
             g_old = g_old.strip()
             g_new = g_new.strip()
             if not g_old or not g_new:
-                print("-> Cú pháp không hợp lệ, cần dạng '$global đoạn_cũ:đoạn_mới'.")
+                print("-> Cú pháp không hợp lệ, cần dạng '$global cũ:mới'.")
                 continue
             g_pattern = build_pattern(g_old, ignore_case)
             total_sub = 0
@@ -350,17 +376,19 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
             print(f"-> [GLOBAL] Đã thay '{g_old}' -> '{g_new}' ở {total_sub} chỗ trong cả file.")
             continue  # vòng lặp tự kiểm tra lại dòng hiện tại (có thể đã đổi)
 
-        if user_input == "n" or user_input == "":
+        if action == "n":
             idx += 1
             continue
 
-        if user_input.lower().startswith("note:"):
-            raw = user_input.split(":", 1)[1]
+        if action == "note":
             # Mỗi phần tử cách nhau dấu phẩy. Phần tử dạng "word1:word2" nghĩa
             # là: note "word1" vào danh sách chờ, ĐỒNG THỜI thay "word1" ->
             # "word2" ngay trong DÒNG HIỆN TẠI. Phần tử không có ":" thì chỉ
-            # note như cũ, không thay gì. Vd: "note:tu_a, tu_b:tu_c".
-            items = [t.strip() for t in raw.split(",") if t.strip()]
+            # note như cũ, không thay gì. Vd: "$note tu_a, tu_b:tu_c".
+            items = [t.strip() for t in param.split(",") if t.strip()]
+            if not items:
+                print("-> Cú pháp không hợp lệ, cần dạng '$note word' hoặc '$note word:thay_thế'.")
+                continue
             noted = []
             for item in items:
                 if ":" in item:
@@ -393,12 +421,15 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
                 print(f"-> Đã thêm vào danh sách chờ: {', '.join(noted)}")
             continue  # không tăng idx -> hiện lại đúng chỗ khớp này, không skip
 
-        if ":" in user_input:
-            # Cú pháp "đoạn_cũ:đoạn_mới" (hoặc "đoạn_cũ: đoạn_mới") -> sửa 1
-            # đoạn BẤT KỲ khác trong CÙNG dòng này, không nhất thiết liên quan
-            # trực tiếp tới `term` đang tìm. Ví dụ đang tìm 'bo' trong dòng
-            # "Tham ngan bo dài", gõ "ngan bo: ngắn bỏ" -> "Tham ngắn bỏ dài".
-            old_part, new_part = user_input.split(":", 1)
+        if action == "fix":
+            # "$fix đoạn_cũ:đoạn_mới" -> sửa 1 đoạn BẤT KỲ khác trong CÙNG
+            # dòng này, không nhất thiết liên quan trực tiếp tới `term` đang
+            # tìm. Ví dụ đang tìm 'bo' trong dòng "Tham ngan bo dài", gõ
+            # "$fix ngan bo:ngắn bỏ" -> "Tham ngắn bỏ dài".
+            if ":" not in param:
+                print("-> Cú pháp không hợp lệ, cần dạng '$fix cũ:mới'.")
+                continue
+            old_part, new_part = param.split(":", 1)
             old_part = old_part.strip()
             new_part = new_part.strip()
             if old_part and new_part:
@@ -412,25 +443,33 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
                 else:
                     print(f"-> Không tìm thấy '{old_part}' trong dòng này để sửa.")
             else:
-                print("-> Cú pháp không hợp lệ, cần dạng 'đoạn_cũ:đoạn_mới'.")
+                print("-> Cú pháp không hợp lệ, cần dạng '$fix cũ:mới'.")
             # Không tăng idx: vòng lặp sẽ tự kiểm tra lại dòng (đã có thể đổi
             # nội dung) xem `term` đang tìm còn khớp hay không.
             continue
 
-        if user_input.lower() == "y":
+        if action == "y":
             if last_replacement is None:
-                print("-> Chưa có từ thay thế nào trước đó để dùng lại bằng 'y'. "
+                print("-> Chưa có từ thay thế nào trước đó để dùng lại bằng '$y'. "
                       "Hãy nhập từ thay thế trước.")
                 continue  # hỏi lại đúng chỗ khớp này
-            user_input = last_replacement
+            param = last_replacement
+            action = "replace"
 
-        new_line, n_sub = pattern.subn(user_input, line)
-        lines[idx] = new_line
-        last_replacement = user_input
-        stats["changed"] = True
-        stats["replaced"] += n_sub
-        print(f"-> Đã thay '{term}' -> '{user_input}' ({n_sub} chỗ trong dòng).")
-        idx += 1
+        if action == "replace":
+            if not param:
+                print("-> Chưa nhập từ/cụm thay thế. Gõ $help để xem danh sách action.")
+                continue
+            new_line, n_sub = pattern.subn(param, line)
+            lines[idx] = new_line
+            last_replacement = param
+            stats["changed"] = True
+            stats["replaced"] += n_sub
+            print(f"-> Đã thay '{term}' -> '{param}' ({n_sub} chỗ trong dòng).")
+            idx += 1
+            continue
+
+        print(f"-> Không rõ action '${action}'. Gõ $help để xem danh sách action.")
 
 
 def main():
