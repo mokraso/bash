@@ -7,7 +7,8 @@ Công cụ sửa lỗi chính tả thủ công (interactive) cho file Markdown �
 (đặc biệt hữu ích khi OCR tiếng Việt sai nhiều).
 
 CÁCH DÙNG:
-    python fix_typos.py <file_markdown.md> <file_danh_sach_tu_sai.txt> [--pending pending.txt] [--ignore-case] [--no-color]
+    python fix_typos.py <file_markdown.md> <file_danh_sach_tu_sai.txt> \
+        [--pending pending.txt] [--ignore-file ignore.txt] [--ignore-case] [--no-color]
 
 TRONG ĐÓ:
     <file_markdown.md>         : đường dẫn tới file markdown cần sửa.
@@ -42,13 +43,26 @@ LUỒNG XỬ LÝ (2 lượt, làm hết lượt 1 rồi mới sang lượt 2):
         - Hỏi người dùng muốn làm gì với chỗ khớp đó (xem đầy đủ các lựa chọn
           trong biến HELP_TEXT bên dưới, hoặc gõ '$help' khi script đang chạy):
           nhập từ/cụm thay thế, 'y', 'n', 'cũ:mới', 'note:...', '$skip',
-          '$list', '$quit', '$help'.
+          '$skip:cụm', '$global cũ:mới', '$list', '$quit', '$help'.
         - Tiêu đề mỗi chỗ khớp có "(còn N từ/cụm nữa trong hàng chờ)" để biết
           tiến độ xử lý tổng (lượt 1 + lượt 2) còn lại bao nhiêu.
 
+    '$skip:cụm' (khác với '$skip' đứng một mình): dùng khi từ đang tìm chỉ là
+    MỘT PHẦN của 1 cụm/từ ghép ĐÚNG chính tả (vd đang tìm 'định', gặp 'nhất
+    định' vốn không sai) -> gõ "$skip: nhất định" để từ nay (cả trong lượt
+    chạy này lẫn các lần chạy sau) bỏ qua, không hỏi lại mỗi khi 'định' nằm
+    trong cụm 'nhất định' nữa. Danh sách (key = từ đang tìm, value = cụm cần
+    bỏ qua) được lưu vào 1 file riêng (giống file pending), mặc định
+    ignore_<tên wordlist>.txt, nạp lại tự động ở các lần chạy sau.
+
+    '$global cũ:mới': thay TOÀN BỘ chỗ khớp của "cũ" bằng "mới" trong CẢ FILE
+    markdown ngay lập tức (không chỉ dòng đang xem, không chỉ từ/cụm đang
+    tìm) -> dùng khi phát hiện 1 lỗi lặp lại nhiều nơi, không liên quan tới
+    wordlist. Ví dụ: "$global y định:ý định".
+
     Sau khi xử lý xong (hoặc dừng giữa chừng bằng Ctrl+C / '$quit'), ghi đè
-    file markdown (có backup .bak ở lần ghi đầu) và ghi file pending nếu có
-    từ note: nào được thêm.
+    file markdown (có backup .bak ở lần ghi đầu), ghi file pending nếu có từ
+    note: nào được thêm, và ghi file ignore nếu có '$skip:cụm' nào được thêm.
 """
 
 import argparse
@@ -163,6 +177,32 @@ def append_pending(path: Path, term: str):
         f.write(term + "\n")
 
 
+def load_ignore_map(path: Path):
+    """Đọc file ignore (mỗi dòng dạng 'key: cụm'), trả về dict
+    {key: [cụm1, cụm2, ...]}. Trả về {} nếu file chưa tồn tại."""
+    ignore_map = {}
+    if not path.exists():
+        return ignore_map
+    text = path.read_text(encoding="utf-8")
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or ":" not in line:
+            continue
+        key, phrase = line.split(":", 1)
+        key = key.strip()
+        phrase = phrase.strip()
+        if key and phrase:
+            ignore_map.setdefault(key, [])
+            if phrase not in ignore_map[key]:
+                ignore_map[key].append(phrase)
+    return ignore_map
+
+
+def append_ignore(path: Path, key: str, phrase: str):
+    with path.open("a", encoding="utf-8") as f:
+        f.write(f"{key}: {phrase}\n")
+
+
 HELP_TEXT = """\
 Các lựa chọn có thể nhập tại dấu nhắc:
   <từ/cụm>      thay thế TẤT CẢ chỗ khớp của từ/cụm đang tìm TRONG DÒNG này
@@ -172,27 +212,58 @@ Các lựa chọn có thể nhập tại dấu nhắc:
   cũ:mới        sửa 1 đoạn KHÁC bất kỳ trong CÙNG dòng này, vd: "ngan bo: ngắn bỏ"
   note:a, b     thêm a, b (tự trim khoảng trắng) vào danh sách chờ cho lần
                 chạy sau; chỗ khớp hiện tại vẫn được hỏi lại, không bị bỏ qua
+  note:a:x      thêm "a" vào danh sách chờ, ĐỒNG THỜI thay "a"->"x" ngay
+                trong DÒNG hiện tại (không ảnh hưởng dòng khác). Có thể trộn
+                chung với kiểu trên: "note:a:x, b" (b chỉ note, không thay)
   $skip         bỏ qua HOÀN TOÀN từ/cụm đang tìm (mọi chỗ khớp còn lại),
                 loại khỏi hàng chờ, qua từ/cụm kế tiếp
+  $skip:cụm     cụm đang tìm nằm trong 1 từ ghép ĐÚNG (vd tìm 'định' gặp
+                'nhất định') -> từ nay bỏ qua, không hỏi lại mỗi khi gặp cụm
+                này nữa (lưu vào file ignore, áp dụng cả các lần chạy sau)
+  $global cũ:mới  thay TOÀN BỘ "cũ" -> "mới" trong CẢ FILE ngay, không chỉ
+                dòng/từ đang xét, vd: "$global y định:ý định"
   $list         xem danh sách các từ/cụm còn lại trong hàng chờ (sau từ này)
   $quit         lưu lại tiến trình và thoát chương trình ngay
   $help         hiện lại bảng hướng dẫn này\
 """
 
 
+def filter_ignored_matches(line, matches, ignore_patterns):
+    """Loại khỏi `matches` những match nằm TRỌN trong phạm vi khớp của bất kỳ
+    pattern nào trong `ignore_patterns` (các cụm đã được đánh dấu bỏ qua bằng
+    '$skip:cụm' cho chính `term` đang xét)."""
+    if not ignore_patterns or not matches:
+        return matches
+    ignored_ranges = []
+    for ip in ignore_patterns:
+        for im in ip.finditer(line):
+            ignored_ranges.append((im.start(), im.end()))
+    if not ignored_ranges:
+        return matches
+    return [
+        m for m in matches
+        if not any(s <= m.start() and m.end() <= e for s, e in ignored_ranges)
+    ]
+
+
 def process_term(term, lines, pending_path, ignore_case, use_color, stats,
-                  remaining_terms=None):
+                  remaining_terms=None, ignore_map=None, ignore_path=None):
     """Quét toàn bộ `lines` để tìm `term`, hỏi người dùng xử lý từng chỗ khớp.
     Cập nhật `lines` tại chỗ. `stats` là dict đếm: changed, replaced, notes.
     `remaining_terms`: list các từ/cụm CÒN LẠI trong hàng chờ SAU từ/cụm này
     (để hiển thị số lượng, và cho action '$list'), None nếu không cần.
+    `ignore_map`: dict {term: [cụm cần bỏ qua, ...]} (xem '$skip:cụm'), dùng
+    chung cho mọi lần gọi trong suốt phiên chạy; `ignore_path` là file lưu nó.
     Có thể raise QuitProgram hoặc SkipTerm."""
     pattern = build_pattern(term, ignore_case)
     last_replacement = None  # "từ thay thế gần nhất" riêng cho `term` này
+    if ignore_map is None:
+        ignore_map = {}
+    ignore_patterns = [build_pattern(p, ignore_case) for p in ignore_map.get(term, [])]
     idx = 0
     while idx < len(lines):
         line = lines[idx]
-        matches = list(pattern.finditer(line))
+        matches = filter_ignored_matches(line, list(pattern.finditer(line)), ignore_patterns)
         if not matches:
             idx += 1
             continue
@@ -236,18 +307,90 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
             print(f"-> Bỏ qua HOÀN TOÀN '{term}', loại khỏi hàng chờ.")
             raise SkipTerm()
 
+        if user_input.lower().startswith("$skip:"):
+            # "$skip: nhất định" -> `term` (vd 'định') nằm trong 1 cụm đúng
+            # chính tả -> từ nay bỏ qua cụm này, không hỏi lại nữa (lưu file).
+            raw = user_input.split(":", 1)[1]
+            skip_phrases = [t.strip() for t in raw.split(",") if t.strip()]
+            for sp in skip_phrases:
+                if ignore_path is not None:
+                    append_ignore(ignore_path, term, sp)
+                ignore_map.setdefault(term, [])
+                if sp not in ignore_map[term]:
+                    ignore_map[term].append(sp)
+                ignore_patterns.append(build_pattern(sp, ignore_case))
+                stats["ignored"] += 1
+            if skip_phrases:
+                print(f"-> Từ nay bỏ qua '{term}' trong: {', '.join(skip_phrases)}")
+            continue  # không tăng idx -> vòng lặp tự lọc lại, bỏ chỗ vừa thêm
+
+        if user_input.lower().startswith("$global "):
+            # "$global đoạn_cũ:đoạn_mới" -> thay TOÀN BỘ file, không chỉ dòng
+            # hay từ/cụm đang xét. Ví dụ: "$global y định:ý định".
+            rest = user_input[len("$global"):].strip()
+            if ":" not in rest:
+                print("-> Cú pháp không hợp lệ, cần dạng '$global đoạn_cũ:đoạn_mới'.")
+                continue
+            g_old, g_new = rest.split(":", 1)
+            g_old = g_old.strip()
+            g_new = g_new.strip()
+            if not g_old or not g_new:
+                print("-> Cú pháp không hợp lệ, cần dạng '$global đoạn_cũ:đoạn_mới'.")
+                continue
+            g_pattern = build_pattern(g_old, ignore_case)
+            total_sub = 0
+            for li in range(len(lines)):
+                new_li, n_sub = g_pattern.subn(g_new, lines[li])
+                if n_sub:
+                    lines[li] = new_li
+                    total_sub += n_sub
+            if total_sub:
+                stats["changed"] = True
+                stats["replaced"] += total_sub
+            print(f"-> [GLOBAL] Đã thay '{g_old}' -> '{g_new}' ở {total_sub} chỗ trong cả file.")
+            continue  # vòng lặp tự kiểm tra lại dòng hiện tại (có thể đã đổi)
+
         if user_input == "n" or user_input == "":
             idx += 1
             continue
 
         if user_input.lower().startswith("note:"):
             raw = user_input.split(":", 1)[1]
-            note_terms = [t.strip() for t in raw.split(",") if t.strip()]
-            for nt in note_terms:
-                append_pending(pending_path, nt)
+            # Mỗi phần tử cách nhau dấu phẩy. Phần tử dạng "word1:word2" nghĩa
+            # là: note "word1" vào danh sách chờ, ĐỒNG THỜI thay "word1" ->
+            # "word2" ngay trong DÒNG HIỆN TẠI. Phần tử không có ":" thì chỉ
+            # note như cũ, không thay gì. Vd: "note:tu_a, tu_b:tu_c".
+            items = [t.strip() for t in raw.split(",") if t.strip()]
+            noted = []
+            for item in items:
+                if ":" in item:
+                    note_word, local_new = item.split(":", 1)
+                    note_word = note_word.strip()
+                    local_new = local_new.strip()
+                else:
+                    note_word, local_new = item.strip(), None
+
+                if not note_word:
+                    continue
+                append_pending(pending_path, note_word)
                 stats["notes"] += 1
-            if note_terms:
-                print(f"-> Đã thêm vào danh sách chờ: {', '.join(note_terms)}")
+                noted.append(note_word)
+
+                if local_new:
+                    note_pattern = build_pattern(note_word, ignore_case)
+                    new_line, n_sub = note_pattern.subn(local_new, line)
+                    if n_sub:
+                        lines[idx] = new_line
+                        line = new_line  # để các phần tử note tiếp theo (nếu có) thấy dòng đã đổi
+                        stats["changed"] = True
+                        stats["replaced"] += n_sub
+                        print(f"-> Đã thay '{note_word}' -> '{local_new}' "
+                              f"({n_sub} chỗ trong dòng) và thêm '{note_word}' vào danh sách chờ.")
+                    else:
+                        print(f"-> Không tìm thấy '{note_word}' trong dòng này để thay, "
+                              f"nhưng vẫn đã thêm vào danh sách chờ.")
+            if noted and not any(":" in it for it in items):
+                print(f"-> Đã thêm vào danh sách chờ: {', '.join(noted)}")
             continue  # không tăng idx -> hiện lại đúng chỗ khớp này, không skip
 
         if ":" in user_input:
@@ -303,6 +446,13 @@ def main():
         help="File lưu danh sách chờ (mặc định: pending_<tên wordlist>.txt cùng thư mục)",
     )
     parser.add_argument(
+        "--ignore-file",
+        type=Path,
+        default=None,
+        help="File lưu danh sách bỏ qua từ '$skip:cụm' "
+             "(mặc định: ignore_<tên wordlist>.txt cùng thư mục)",
+    )
+    parser.add_argument(
         "--ignore-case",
         action="store_true",
         help="So khớp không phân biệt hoa/thường",
@@ -324,6 +474,8 @@ def main():
         sys.exit(f"Không tìm thấy file danh sách từ sai: {wl_path}")
 
     pending_path: Path = args.pending or (wl_path.parent / f"pending_{wl_path.name}")
+    ignore_path: Path = args.ignore_file or (wl_path.parent / f"ignore_{wl_path.name}")
+    ignore_map = load_ignore_map(ignore_path)
 
     wl_lines = load_wordlist_lines(wl_path)
     if not wl_lines:
@@ -339,7 +491,7 @@ def main():
     original_text = md_path.read_text(encoding="utf-8")
     lines = original_text.split("\n")
 
-    stats = {"changed": False, "replaced": 0, "notes": 0}
+    stats = {"changed": False, "replaced": 0, "notes": 0, "ignored": 0}
 
     try:
         for i, term in enumerate(queue):
@@ -348,6 +500,7 @@ def main():
                 process_term(
                     term, lines, pending_path, args.ignore_case, use_color,
                     stats, remaining_terms=remaining_terms,
+                    ignore_map=ignore_map, ignore_path=ignore_path,
                 )
             except SkipTerm:
                 continue
@@ -366,6 +519,8 @@ def main():
 
         if stats["notes"]:
             print(f"Đã thêm {stats['notes']} từ/cụm vào danh sách chờ: {pending_path}")
+        if stats["ignored"]:
+            print(f"Đã thêm {stats['ignored']} cụm vào danh sách bỏ qua: {ignore_path}")
 
         print(f"Tổng số lượt thay thế: {stats['replaced']}")
 
