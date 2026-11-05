@@ -41,12 +41,12 @@ LUỒNG XỬ LÝ (2 lượt, làm hết lượt 1 rồi mới sang lượt 2):
           nếu nằm ở CUỐI dòng thì in thêm dòng NGAY SAU đó -> để có đủ ngữ
           cảnh câu (vì câu có thể bị ngắt giữa 2 dòng do OCR).
         - Hỏi người dùng muốn làm gì với chỗ khớp đó (xem đầy đủ trong biến
-          HELP_TEXT bên dưới, hoặc gõ '$help' khi script đang chạy). 'y' và
-          'n' gõ TRẦN như cũ (không có "$"); mọi action khác theo cú pháp
-          "$<action> [params]": $fix cũ:mới, $note ..., $skip, $skip cụm,
-          $global cũ:mới (viết tắt $g), $list, $quit, $help. Gõ trực tiếp
-          từ/cụm khác (không có "$", không phải 'y'/'n') tương đương
-          "$replace <từ/cụm>" - tức thay thế ngay bằng đúng những gì vừa gõ.
+          HELP_TEXT bên dưới, hoặc gõ '$help' khi script đang chạy).
+          KHÔNG cần dấu "$": gõ trực tiếp từ/cụm thay thế (vd "khác"), 'y',
+          'n', hoặc 'cũ:mới' để sửa 1 đoạn khác trong dòng hiện tại (vd
+          "ngan bo: ngắn bỏ"). Các action còn lại theo cú pháp
+          "$<action> [params]": $note ..., $skip, $skip cụm, $global cũ:mới
+          (viết tắt $g), $list, $quit, $help.
         - Tiêu đề mỗi chỗ khớp có "(còn N từ/cụm nữa trong hàng chờ)" để biết
           tiến độ xử lý tổng (lượt 1 + lượt 2) còn lại bao nhiêu.
 
@@ -208,17 +208,16 @@ def append_ignore(path: Path, key: str, phrase: str):
 
 
 HELP_TEXT = """\
-CÚ PHÁP cho mọi action KHÁC 'y'/'n':  $<action> [params]
-Riêng 'y' và 'n' gõ TRẦN, không có dấu "$". Gõ trực tiếp từ/cụm khác (không
-có "$", không phải 'y'/'n') == "$replace <từ/cụm>".
+KHÔNG cần dấu "$": <từ/cụm thay thế>, 'y', 'n', <cũ:mới> (sửa đoạn khác).
+Mọi action còn lại (dưới đây) theo cú pháp:  $<action> [params]
 
-  <từ/cụm>          == $replace <từ/cụm>: thay TẤT CẢ chỗ khớp của từ/cụm
+  <từ/cụm>          gõ trực tiếp từ/cụm -> thay TẤT CẢ chỗ khớp của từ/cụm
                       đang tìm TRONG DÒNG này; được nhớ lại làm "gần nhất"
                       để dùng với 'y'
   y                 dùng lại y nguyên từ thay thế gần nhất (cho từ/cụm đang tìm)
   n                 bỏ qua (next), sang chỗ khớp kế tiếp (Enter trống = 'n')
-  $fix cũ:mới       sửa 1 đoạn KHÁC bất kỳ trong CÙNG dòng này, vd:
-                    "$fix ngan bo:ngắn bỏ"
+  cũ:mới            (gõ trần, không cần "$") sửa 1 đoạn KHÁC bất kỳ trong
+                    CÙNG dòng này, vd: "ngan bo: ngắn bỏ"
   $note a, b        thêm a, b (tự trim khoảng trắng) vào danh sách chờ cho
                     lần chạy sau; chỗ khớp hiện tại vẫn được hỏi lại
   $note a:x         thêm "a" vào danh sách chờ, ĐỒNG THỜI thay "a"->"x" ngay
@@ -297,10 +296,9 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
         except EOFError:
             user_input = "n"
 
-        # ---- Cú pháp cho mọi action khác (ngoại trừ 'y'/'n'): "$<action> [params]".
-        # Riêng 'y' và 'n' vẫn gõ TRẦN không có dấu "$" (y: dùng lại thay thế
-        # gần nhất; n hoặc Enter trống: bỏ qua). Gõ trực tiếp từ/cụm khác
-        # (không có "$", không phải 'y'/'n') == "$replace <text>".
+        # ---- Không cần dấu "$": 'y', 'n', <text thay thế>, <cũ:mới> (sửa 1
+        # đoạn khác trong dòng hiện tại). Mọi action khác theo cú pháp
+        # "$<action> [params]".
         if user_input == "" or user_input.lower() == "n":
             action, param = "n", ""
         elif user_input.lower() == "y":
@@ -311,6 +309,8 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
             param = rest.strip()
             if action == "g":
                 action = "global"
+        elif ":" in user_input:
+            action, param = "fix", user_input
         else:
             action = "replace"
             param = user_input
@@ -422,13 +422,10 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
             continue  # không tăng idx -> hiện lại đúng chỗ khớp này, không skip
 
         if action == "fix":
-            # "$fix đoạn_cũ:đoạn_mới" -> sửa 1 đoạn BẤT KỲ khác trong CÙNG
-            # dòng này, không nhất thiết liên quan trực tiếp tới `term` đang
-            # tìm. Ví dụ đang tìm 'bo' trong dòng "Tham ngan bo dài", gõ
-            # "$fix ngan bo:ngắn bỏ" -> "Tham ngắn bỏ dài".
-            if ":" not in param:
-                print("-> Cú pháp không hợp lệ, cần dạng '$fix cũ:mới'.")
-                continue
+            # "đoạn_cũ:đoạn_mới" (gõ trần, không cần "$") -> sửa 1 đoạn BẤT
+            # KỲ khác trong CÙNG dòng này, không nhất thiết liên quan trực
+            # tiếp tới `term` đang tìm. Ví dụ đang tìm 'bo' trong dòng
+            # "Tham ngan bo dài", gõ "ngan bo: ngắn bỏ" -> "Tham ngắn bỏ dài".
             old_part, new_part = param.split(":", 1)
             old_part = old_part.strip()
             new_part = new_part.strip()
@@ -443,7 +440,7 @@ def process_term(term, lines, pending_path, ignore_case, use_color, stats,
                 else:
                     print(f"-> Không tìm thấy '{old_part}' trong dòng này để sửa.")
             else:
-                print("-> Cú pháp không hợp lệ, cần dạng '$fix cũ:mới'.")
+                print("-> Cú pháp không hợp lệ, cần dạng 'cũ:mới'.")
             # Không tăng idx: vòng lặp sẽ tự kiểm tra lại dòng (đã có thể đổi
             # nội dung) xem `term` đang tìm còn khớp hay không.
             continue

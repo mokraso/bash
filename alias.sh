@@ -124,3 +124,42 @@ ff() {
   source "$HOME/.local/data/mokraso-bash/clear-history.sh"
 }
 
+
+# xóa lịch sử chat claude code của TẤT CẢ project (giữ lại memory và các file/folder khác)
+# usage: del        -> in danh sách mapping
+#        del <idx>  -> xóa chat history của mọi project trong folder tương ứng
+del() {
+  # mapping: key (1-indexed) -> thư mục gốc chứa các project của claude code
+  local dirs=(
+    "$HOME/.claude/projects"
+  )
+
+  if [[ -z "$1" ]]; then
+    echo "Usage: del <index>"
+    echo "Available folders:"
+    for i in {1..${#dirs[@]}}; do
+      echo "  [$i] ${dirs[$i]}"
+    done
+    return 0
+  fi
+
+  if [[ ! "$1" =~ ^[0-9]+$ ]] || (( $1 < 1 || $1 > ${#dirs[@]} )); then
+    echo "❌ Invalid index: $1 (valid: 1-${#dirs[@]})"
+    return 1
+  fi
+
+  local dir="${dirs[$1]}"
+  if [[ ! -d "$dir" ]]; then
+    echo "❌ Folder not found: $dir"
+    return 1
+  fi
+
+  # trong mỗi project chỉ xóa: file *.jsonl (chat) và folder có tên là UUID (subagents, tool-results)
+  # giữ lại: memory/ và mọi thứ khác
+  find "$dir" -mindepth 2 -maxdepth 2 -type f -name '*.jsonl' -print -delete
+  find "$dir" -mindepth 2 -maxdepth 2 -type d \
+    -regextype posix-extended \
+    -regex '.*/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' \
+    -print -exec rm -rf {} +
+  echo "🧹 Cleared chat history of all projects in [$1] $dir (kept memory & other files)"
+}
