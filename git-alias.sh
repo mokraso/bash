@@ -2,6 +2,16 @@
 # Git helper functions
 # ==============================
 
+# Global branch names: 1 = main, 2 = staging (default index = 1)
+typeset -gA GIT_BRANCHES=([1]="main" [2]="staging")
+
+# _git_branch_name [1|2]: print branch name for index (default 1)
+_git_branch_name() {
+  local name="${GIT_BRANCHES[${1:-1}]}"
+  [[ -n "$name" ]] || return 1
+  echo "$name"
+}
+
 # gitp: pull from origin using current branch
 gitp() {
   local branch
@@ -29,8 +39,8 @@ gita() {
   local current_branch
   current_branch=$(git branch --show-current)
 
-  if [[ "$current_branch" == "staging" && "$push_flag" != "0" ]]; then
-    echo "❌ Push to 'staging' branch is not allowed"
+  if [[ "$current_branch" == "${GIT_BRANCHES[2]}" && "$push_flag" != "0" ]]; then
+    echo "❌ Push to '${GIT_BRANCHES[2]}' branch is not allowed"
     echo "   Use a feature branch and create a Merge Request instead."
     return 1
   fi
@@ -201,14 +211,14 @@ gits() {
 
 gitc() {
     case "$1" in
-        0)
-            git checkout main &&
-            git pull origin main
+        1)
+            git checkout "${GIT_BRANCHES[1]}" &&
+            git pull origin "${GIT_BRANCHES[1]}"
             ;;
 
-        1)
-            git checkout staging &&
-            git pull origin staging
+        2)
+            git checkout "${GIT_BRANCHES[2]}" &&
+            git pull origin "${GIT_BRANCHES[2]}"
             ;;
 
         -b)
@@ -226,8 +236,8 @@ gitc() {
 
         "")
             echo "Usage:"
-            echo "  gitc 0                  # checkout main + pull"
-            echo "  gitc 1                  # checkout staging + pull"
+            echo "  gitc 1                  # checkout ${GIT_BRANCHES[1]} + pull"
+            echo "  gitc 2                  # checkout ${GIT_BRANCHES[2]} + pull"
             echo "  gitc <branch>            # checkout existing branch"
             echo "  gitc -b <branch>         # create + checkout branch"
             echo "  gitc -                   # checkout previous branch"
@@ -349,10 +359,10 @@ gitd() {
   git -c color.ui=never diff "$@" | python3 <(_gitd_py) | less -RFX
 }
 
-# gitmr [0|1]: print a ctrl+click link to the "new merge request" page
-# (source = current branch, target = default branch, or staging if arg is 1)
+# gitmr [1|2]: print a ctrl+click link to the "new merge request" page
+# (source = current branch, target = ${GIT_BRANCHES[1]} (default) or ${GIT_BRANCHES[2]} if arg is 2)
 gitmr() {
-  local mode="${1:-0}" url branch target base host repo_path
+  local mode="${1:-1}" url branch target base host repo_path
 
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   if [[ -z "$branch" ]]; then
@@ -379,13 +389,10 @@ gitmr() {
   host="${host#ssh.}"; host="${host#altssh.}"
   base="https://$host/$repo_path"
 
-  if [[ "$mode" == "1" ]]; then
-    target="staging"
-  else
-    target=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)
-    target="${target#origin/}"
-    [[ -z "$target" ]] && target="main"
-  fi
+  target=$(_git_branch_name "$mode") || {
+    echo "❌ Invalid mode '$mode' (1 = ${GIT_BRANCHES[1]}, 2 = ${GIT_BRANCHES[2]})"
+    return 1
+  }
 
   if [[ "$branch" == "$target" ]]; then
     echo "❌ Current branch is already '$target'"
