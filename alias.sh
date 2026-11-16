@@ -127,12 +127,14 @@ ff() {
 
 # xóa lịch sử chat claude code của TẤT CẢ project (giữ lại memory và các file/folder khác)
 # usage: del        -> in danh sách mapping
-#        del <idx>  -> xóa chat history của mọi project trong folder tương ứng
+#        del 1      -> xóa chat history của mọi project claude code
+#        del 2      -> xóa Chrome history file
 del() {
   # mapping: key (1-indexed) -> thư mục gốc chứa các project của claude code
   local dirs=(
     "$HOME/.claude/projects"
   )
+  local chrome_history="/home/laidq/.config/google-chrome/Default/History"
 
   if [[ -z "$1" ]]; then
     echo "Usage: del <index>"
@@ -140,11 +142,22 @@ del() {
     for i in {1..${#dirs[@]}}; do
       echo "  [$i] ${dirs[$i]}"
     done
+    echo "  [2] $chrome_history"
+    return 0
+  fi
+
+  if [[ "$1" == "2" ]]; then
+    if [[ ! -f "$chrome_history" ]]; then
+      echo "❌ File not found: $chrome_history"
+      return 1
+    fi
+    rm -f "$chrome_history"
+    echo "🧹 Deleted Chrome history: $chrome_history"
     return 0
   fi
 
   if [[ ! "$1" =~ ^[0-9]+$ ]] || (( $1 < 1 || $1 > ${#dirs[@]} )); then
-    echo "❌ Invalid index: $1 (valid: 1-${#dirs[@]})"
+    echo "❌ Invalid index: $1 (valid: 1-${#dirs[@]}, 2)"
     return 1
   fi
 
