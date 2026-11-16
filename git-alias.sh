@@ -359,7 +359,8 @@ gitd() {
   git -c color.ui=never diff "$@" | python3 <(_gitd_py) | less -RFX
 }
 
-# gitmr [1|2]: print a ctrl+click link to the "new merge request" page
+# gitmr [1|2]: print ctrl+click link(s) to the "new merge request" page
+# (no arg: print both links, main + staging, in different colors)
 # (source = current branch, target = ${GIT_BRANCHES[1]} (default) or ${GIT_BRANCHES[2]} if arg is 2)
 gitmr() {
   local mode="${1:-1}" url branch target base host repo_path
@@ -389,20 +390,41 @@ gitmr() {
   host="${host#ssh.}"; host="${host#altssh.}"
   base="https://$host/$repo_path"
 
+  # build the MR link for a given target branch
+  _mr_link() {
+    local src="${branch//\//%2F}" dst="${1//\//%2F}"
+    if [[ "$host" == *github* ]]; then
+      echo "${base}/compare/${dst}...${src}?expand=1"
+    else
+      echo "${base}/-/merge_requests/new?merge_request%5Bsource_branch%5D=${src}&merge_request%5Btarget_branch%5D=${dst}"
+    fi
+  }
+
+  if [[ $# -eq 0 ]]; then
+    # no arg: print both links, colored (1 = green, 2 = yellow)
+    local -a colors=($'\e[1;32m' $'\e[1;33m')
+    local i t
+    for i in 1 2; do
+      t="${GIT_BRANCHES[$i]}"
+      [[ "$branch" == "$t" ]] && continue
+      printf '%s%-8s%s %s\n' "${colors[$i]}" "→ $t" $'\e[0m' "$(_mr_link "$t")"
+    done
+    unfunction _mr_link
+    return 0
+  fi
+
   target=$(_git_branch_name "$mode") || {
     echo "❌ Invalid mode '$mode' (1 = ${GIT_BRANCHES[1]}, 2 = ${GIT_BRANCHES[2]})"
+    unfunction _mr_link
     return 1
   }
 
   if [[ "$branch" == "$target" ]]; then
     echo "❌ Current branch is already '$target'"
+    unfunction _mr_link
     return 1
   fi
 
-  local src="${branch//\//%2F}" dst="${target//\//%2F}"
-  if [[ "$host" == *github* ]]; then
-    echo "${base}/compare/${dst}...${src}?expand=1"
-  else
-    echo "${base}/-/merge_requests/new?merge_request%5Bsource_branch%5D=${src}&merge_request%5Btarget_branch%5D=${dst}"
-  fi
+  _mr_link "$target"
+  unfunction _mr_link
 }
