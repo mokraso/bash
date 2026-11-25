@@ -28,7 +28,7 @@ docker compose ps
 Vào shell của container:
 
 ```bash
-docker compose exec claude bash
+docker compose exec cnginx bash
 ```
 
 Sau khi vào container:
@@ -118,7 +118,7 @@ Thông thường chỉ cần:
 
 ```bash
 docker compose up -d
-docker compose exec claude bash
+docker compose exec cnginx bash
 ```
 
 Sau đó:
@@ -137,11 +137,11 @@ docker compose ps
 Xem log:
 
 ```bash
-docker compose logs claude
+docker compose logs cnginx
 ```
 
 Theo dõi log realtime:
 
 ```bash
-docker compose logs -f claude
+docker compose logs -f cnginx
 ```

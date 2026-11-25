@@ -10,4 +10,7 @@ export HOST_GID=$(id -g)
 
 # docker compose up -d --build
 docker compose up -d
-docker compose exec cus-ubuntu bash
+docker compose exec cnginx bash || true
+
+# Thoát shell -> tắt container (giữ nguyên data, chỉ biến mất khỏi `docker container ps`)
+docker compose stop
