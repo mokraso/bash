@@ -125,6 +125,48 @@ ff() {
 }
 
 
+# thống kê số container docker và RAM/CPU đang dùng
+dstat() {
+  local all stats
+  all=$(docker ps -aq) || return 1
+  stats=$(docker stats --no-stream --format '{{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.CPUPerc}}') || return 1
+
+  printf '%s\n' "$stats" | awk -F'\t' -v total="$(printf '%s' "$all" | grep -c .)" '
+    # "51.04MiB / 7.6GiB" -> 51.04
+    function mib(s,    n, u) {
+      sub(/ *\/.*/, "", s)
+      n = s + 0
+      u = s
+      gsub(/[0-9. ]/, "", u)
+      if (u == "GiB") return n * 1024
+      if (u == "KiB") return n / 1024
+      if (u == "B") return n / 1048576
+      return n
+    }
+    NF == 4 {
+      c++
+      name[c] = $1; mem[c] = mib($2); memp[c] = $3 + 0; cpu[c] = $4 + 0
+      summem += mem[c]; summemp += memp[c]; sumcpu += cpu[c]
+      if (length($1) > w) w = length($1)
+    }
+    END {
+      printf "Container: %d (đang chạy %d, đã dừng %d)\n", total, c, total - c
+      if (!c) exit
+      if (w < 9) w = 9
+      row = "%-" w "s  %12s  %7s  %7s\n"
+      printf "\n" row, "NAME", "RAM", "RAM %", "CPU %"
+      # nhiều RAM nhất lên đầu
+      for (i = 1; i <= c; i++) {
+        top = 0
+        for (j = 1; j <= c; j++)
+          if (!done[j] && (!top || mem[j] > mem[top])) top = j
+        done[top] = 1
+        printf row, name[top], sprintf("%.2f MiB", mem[top]), sprintf("%.2f%%", memp[top]), sprintf("%.2f%%", cpu[top])
+      }
+      printf row, "TOTAL", sprintf("%.2f MiB", summem), sprintf("%.2f%%", summemp), sprintf("%.2f%%", sumcpu)
+    }'
+}
+
 # xóa lịch sử chat claude code của TẤT CẢ project (giữ lại memory và các file/folder khác)
 # usage: del        -> in danh sách mapping
 #        del 1      -> xóa chat history của mọi project claude code

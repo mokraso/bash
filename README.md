@@ -26,6 +26,7 @@ source ~/.local/data/mokraso-bash/fzf-alias.sh
 | `snip` | Bật/tắt icon Snipaste trên tray | - |
 | `epoch [ts]` | Đổi epoch (giây hoặc ms) sang UTC/UTC+7 | không truyền = hiện tại |
 | `pyac [n]` | Activate venv: `.venv` ở thư mục hiện tại, không có thì venv mặc định | `n` = chọn venv theo số thứ tự |
+| `dstats` | Đếm container Docker, bảng RAM/CPU của các container đang chạy kèm tổng | - |
 | `ff` | Chạy `clear-history.sh` (xóa history, xóa session Claude) | - |
 
 ## git-alias.sh
