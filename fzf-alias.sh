@@ -270,21 +270,19 @@ dlogs() {
         return 1
     }
 
-    local container
+    local container="$1"
 
-    container=$(
-        docker ps \
-            --format '{{.Names}}\t{{.Image}}\t{{.Status}}' |
-        fzf \
-            --prompt='Container > ' \
-            --delimiter=$'\t' \
-            --with-shell=bash \
-            --preview='
-                name=$(printf "%s" {} | cut -f1)
-                docker logs --tail 100 "$name" 2>&1
-            ' |
-        cut -f1
-    ) || return 0
+    if [[ -z "$container" ]]; then
+        container=$(
+            docker ps \
+                --format '{{.Names}}\t{{.Image}}\t{{.Status}}' |
+            fzf \
+                --prompt='Container > ' \
+                --delimiter=$'\t' \
+                --preview='docker logs --tail 100 {1} 2>&1' |
+            cut -f1
+        ) || return 0
+    fi
 
     [[ -z "$container" ]] && return 0
 
@@ -303,21 +301,20 @@ klogs() {
         return 1
     }
 
-    local pod
+    local pod="$1"
 
-    pod=$(
-        kubectl get pods \
-            --no-headers \
-            -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName' |
-        fzf \
-            --prompt='Pod > ' \
-            --delimiter=' ' \
-            --preview='
-                pod=$(printf "%s" {} | awk "{print \$1}")
-                kubectl describe pod "$pod" 2>/dev/null
-            ' |
-        awk '{print $1}'
-    ) || return 0
+    if [[ -z "$pod" ]]; then
+        pod=$(
+            kubectl get pods \
+                --no-headers \
+                -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName' |
+            fzf \
+                --prompt='Pod > ' \
+                --delimiter=' ' \
+                --preview='kubectl describe pod {1} 2>/dev/null' |
+            awk '{print $1}'
+        ) || return 0
+    fi
 
     [[ -z "$pod" ]] && return 0
 

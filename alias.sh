@@ -127,11 +127,13 @@ ff() {
 
 # thống kê số container docker và RAM/CPU đang dùng
 dstat() {
-  local all stats
+  local all stats ports
   all=$(docker ps -aq) || return 1
-  stats=$(docker stats --no-stream --format '{{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.CPUPerc}}') || return 1
+  stats=$(docker stats --no-stream --format 'S\t{{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.CPUPerc}}') || return 1
+  ports=$(docker ps --format 'P\t{{.Names}}\t{{.Ports}}') || return 1
 
-  printf '%s\n' "$stats" | awk -F'\t' -v total="$(printf '%s' "$all" | grep -c .)" '
+  # LC_NUMERIC=C: docker in số dạng "0.45", locale dùng dấu phẩy sẽ làm awk cắt mất phần thập phân
+  printf '%s\n%s\n' "$ports" "$stats" | LC_NUMERIC=C awk -F'\t' -v total="$(printf '%s' "$all" | grep -c .)" '
     # "51.04MiB / 7.6GiB" -> 51.04
     function mib(s,    n, u) {
       sub(/ *\/.*/, "", s)
@@ -143,27 +145,39 @@ dstat() {
       if (u == "B") return n / 1048576
       return n
     }
-    NF == 4 {
+    # "0.0.0.0:8080->80/tcp, :::8080->80/tcp, 5432/tcp" -> "8080->80/tcp" (chỉ port publish ra host, bỏ trùng IPv4/IPv6)
+    $1 == "P" {
+      n = split($3, a, /, */); out = ""; delete seen
+      for (k = 1; k <= n; k++) {
+        if (a[k] !~ /->/) continue
+        sub(/^.*:/, "", a[k])
+        if (seen[a[k]]++) continue
+        out = out (out ? ", " : "") a[k]
+      }
+      port[$2] = out
+      next
+    }
+    $1 == "S" && NF == 5 {
       c++
-      name[c] = $1; mem[c] = mib($2); memp[c] = $3 + 0; cpu[c] = $4 + 0
+      name[c] = $2; mem[c] = mib($3); memp[c] = $4 + 0; cpu[c] = $5 + 0
       summem += mem[c]; summemp += memp[c]; sumcpu += cpu[c]
-      if (length($1) > w) w = length($1)
+      if (length($2) > w) w = length($2)
     }
     END {
       printf "Container: %d (đang chạy %d, đã dừng %d)\n", total, c, total - c
       if (!c) exit
       if (w < 9) w = 9
-      row = "%-" w "s  %12s  %7s  %7s\n"
-      printf "\n" row, "NAME", "RAM", "RAM %", "CPU %"
+      row = "%-" w "s  %12s  %7s  %7s  %s\n"
+      printf "\n" row, "NAME", "RAM", "RAM %", "CPU %", "PORTS"
       # nhiều RAM nhất lên đầu
       for (i = 1; i <= c; i++) {
         top = 0
         for (j = 1; j <= c; j++)
           if (!done[j] && (!top || mem[j] > mem[top])) top = j
         done[top] = 1
-        printf row, name[top], sprintf("%.2f MiB", mem[top]), sprintf("%.2f%%", memp[top]), sprintf("%.2f%%", cpu[top])
+        printf row, name[top], sprintf("%.2f MiB", mem[top]), sprintf("%.2f%%", memp[top]), sprintf("%.2f%%", cpu[top]), (port[name[top]] != "" ? port[name[top]] : "-")
       }
-      printf row, "TOTAL", sprintf("%.2f MiB", summem), sprintf("%.2f%%", summemp), sprintf("%.2f%%", sumcpu)
+      printf row, "TOTAL", sprintf("%.2f MiB", summem), sprintf("%.2f%%", summemp), sprintf("%.2f%%", sumcpu), ""
     }'
 }
 

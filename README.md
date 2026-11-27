@@ -26,7 +26,7 @@ source ~/.local/data/mokraso-bash/fzf-alias.sh
 | `snip` | Bật/tắt icon Snipaste trên tray | - |
 | `epoch [ts]` | Đổi epoch (giây hoặc ms) sang UTC/UTC+7 | không truyền = hiện tại |
 | `pyac [n]` | Activate venv: `.venv` ở thư mục hiện tại, không có thì venv mặc định | `n` = chọn venv theo số thứ tự |
-| `dstats` | Đếm container Docker, bảng RAM/CPU của các container đang chạy kèm tổng | - |
+| `dstats` | Đếm container Docker, bảng RAM/CPU + port publish của các container đang chạy kèm tổng | - |
 | `ff` | Chạy `clear-history.sh` (xóa history, xóa session Claude) | - |
 
 ## git-alias.sh
@@ -55,6 +55,6 @@ Cần: `fzf`, `git`, `bat` (tùy chọn), `docker`, `kubectl`. Phím chung: `alt
 | `gcof` | Chọn branch (local/remote) rồi switch | - |
 | `glogf` | Duyệt commit toàn repo, Enter xem `git show` | - |
 | `glogfile [file]` | Lịch sử 1 file (theo dõi cả đổi tên), preview diff cùng màu `gitd`. Enter xem commit, `ctrl-y` copy hash | `file`: không truyền thì chọn bằng fzf |
-| `dlogs` | Chọn container rồi `docker logs -f` | - |
-| `klogs` | Chọn pod rồi `kubectl logs -f` | - |
+| `dlogs [name]` | Chọn container rồi `docker logs -f` | `name` = bỏ qua fzf, theo dõi log container đó |
+| `klogs [name]` | Chọn pod rồi `kubectl logs -f` | `name` = bỏ qua fzf, theo dõi log pod đó |
 | `kns` | Chọn namespace rồi set cho context hiện tại | - |
